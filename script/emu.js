@@ -2,10 +2,8 @@
 // Licensing information can be found in the LICENSE file
 // (C) 2013 Licker Nandor. All rights reserved.
 
-(function ()
+( function ( emu )
 {
-  var ram, cpu, gpu, rom;
-
 	function load_rom( rom_name )
 	{
 		var req;
@@ -17,47 +15,48 @@
     req.onload = function( evt )
     {
       rom = new ROM( req.response );
-      ram.load_rom( rom );
-      for (var i = 0; i < 100; ++i) {
-        cpu.tick( );
-        $("#pc").text(cpu.pc.toString( 16 ));
-        $("#sp").text(cpu.sp.toString( 16 ));
-        $("#af").text(cpu.af.toString( 16 ));
-        $("#bc").text(cpu.bc.toString( 16 ));
-        $("#de").text(cpu.de.toString( 16 ));
-        $("#hl").text(cpu.hl.toString( 16 ));
-        $("#zf").text(cpu.zf ? 1 : 0);
-        $("#nf").text(cpu.nf ? 1 : 0);
-        $("#hf").text(cpu.hf ? 1 : 0);
-        $("#cf").text(cpu.cf ? 1 : 0);
+      emu.load_rom( rom );
+
+      for (var i = 0; i < 100; ++i)
+      {
+        emu.tick( );
+        $("#pc").text(emu.pc.toString( 16 ));
+        $("#sp").text(emu.sp.toString( 16 ));
+        $("#af").text(emu.af.toString( 16 ));
+        $("#bc").text(emu.bc.toString( 16 ));
+        $("#de").text(emu.de.toString( 16 ));
+        $("#hl").text(emu.hl.toString( 16 ));
+        $("#zf").text(emu.zf ? 1 : 0);
+        $("#nf").text(emu.nf ? 1 : 0);
+        $("#hf").text(emu.hf ? 1 : 0);
+        $("#cf").text(emu.cf ? 1 : 0);
       }
 
-      $("#step").click( function( ) {
-        cpu.tick( );
+      $("#step").click( function( )
+      {
+        emu.tick( );
 
-        $("#pc").text(cpu.pc.toString( 16 ));
-        $("#sp").text(cpu.sp.toString( 16 ));
-        $("#af").text(cpu.af.toString( 16 ));
-        $("#bc").text(cpu.bc.toString( 16 ));
-        $("#de").text(cpu.de.toString( 16 ));
-        $("#hl").text(cpu.hl.toString( 16 ));
-        $("#zf").text(cpu.zf ? 1 : 0);
-        $("#nf").text(cpu.nf ? 1 : 0);
-        $("#hf").text(cpu.hf ? 1 : 0);
-        $("#cf").text(cpu.cf ? 1 : 0);
+        $("#pc").text(emu.pc.toString( 16 ));
+        $("#sp").text(emu.sp.toString( 16 ));
+        $("#af").text(emu.af.toString( 16 ));
+        $("#bc").text(emu.bc.toString( 16 ));
+        $("#de").text(emu.de.toString( 16 ));
+        $("#hl").text(emu.hl.toString( 16 ));
+        $("#zf").text(emu.zf ? 1 : 0);
+        $("#nf").text(emu.nf ? 1 : 0);
+        $("#hf").text(emu.hf ? 1 : 0);
+        $("#cf").text(emu.cf ? 1 : 0);
       });
     }
 
     req.send( );
 	}
 
-  function init( )
+  emu.init = function( )
   {
-    ram = new RAM( );
-    gpu = new GPU( ram );
-    cpu = new CPU( ram );
-    load_rom( "pokemon_crystal.gbc" );
+    for ( var i = 0; i < 1000; ++i )
+    {
+      emu.tick( );
+    }
   }
-
-  init( );
-}) ();
+}) ( window.emu = window.emu || { } );
