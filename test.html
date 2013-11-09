@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title> JSGB test suite </title>
+    <link rel=  "stylesheet" href = "lib/qunit.css" >
+    <script src = "lib/qunit.js" > </script>
+  </head>
+  <body>
+    <div id = "qunit" > </div>
+    <div id = "qunit-fixture" > </div>
+
+    <script type = "text/javascript" src = "script/cpu.js" > </script>
+    <script type = "text/javascript" src = "script/gpu.js" > </script>
+    <script type = "text/javascript" src = "script/ram.js" > </script>
+    <script type = "text/javascript" src = "script/rom.js" > </script>
+
+    <script type = "text/javascript" >
+      var ram = new RAM( );
+      var cpu = new CPU( ram );
+
+      test( "Flags", function( ) {
+        ok( !cpu.zf, "Initial value" );
+        cpu.zf = false;
+        ok( !cpu.zf, "Clear okay" );
+        cpu.zf = true;
+        ok( cpu.zf, "Set okay" );
+      });
+
+      test( "PC", function( ) {
+        equal( cpu.pc, 0x0100, "Initial value" );
+        cpu.pc = 0x1234;
+        equal( cpu.pc, 0x1234, "Get / Set" );
+        cpu.pc = 0x11111111;
+        equal( cpu.pc, 0x1111, "Clamp" );
+      });
+
+      test( "SP", function( ) {
+        equal( cpu.sp, 0x0000, "Initial value" );
+        cpu.sp = 0x1234;
+        equal( cpu.sp, 0x1234, "Get / Set" );
+        cpu.sp = 0x11111111;
+        equal( cpu.sp, 0x1111, "Clamp" );
+      });
+
+      test( "AF, BC, DE, HL", function( ) {
+        equal( cpu.af, 0x0000, "Initial value" );
+        cpu.af = 0x1234;
+        equal( cpu.a, 0x12, "Pair set high" );
+        equal( cpu.f, 0x34, "Pair set low" );
+        cpu.a = 0x21;
+        equal( cpu.a, 0x21, "Set high high" );
+        equal( cpu.f, 0x34, "Set high low" );
+        cpu.f = 0x43;
+        equal( cpu.a, 0x21, "Set low high" );
+        equal( cpu.f, 0x43, "Set low low" );
+      });
+
+      test( "Zero flag (Z) test", function( ) {
+      });
+
+      test( "Subtract flag (N) test", function( ) {
+      });
+
+      test( "Half carry flag (H) test", function( ) {
+      });
+
+      test( "Carry flag (C) test", function( ) {
+        cpu.flags_sub( 5, 10 );
+        ok( cpu.zf, "Sub set" );
+      });
+
+    </script>
+  </body>
+</html>
