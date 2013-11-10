@@ -1,6 +1,8 @@
-// emu file is part of the JavaScript GameBoy Emulator
-// Licensing information can be found in the LICENSE file
-// (C) 2013 Licker Nandor. All rights reserved.
+/**
+ * This file is part of the JavaScript GameBoy emulator
+ * Licensing information can be found in the LICENSE file
+ * (C) 2013 Licker Nandor. All rights reserved.
+ */
 
 ( function ( emu )
 {
@@ -105,14 +107,14 @@
       // Video RAM
       case ( 0x8000 <= addr && addr < 0xA000 ):
       {
-        console.log( "Read from video memory" );
+        //console.log( "Read from video memory" );
         return 0;
       }
 
       // Switchable RAM bank
       case ( 0xA000 <= addr && addr < 0xC000 ):
       {
-        console.log( "Read from switchable RAM" );
+        //console.log( "Read from switchable RAM" );
         return 0;
       }
 
@@ -125,14 +127,14 @@
       // Sprite attrib memory
       case ( 0xFE00 <= addr && addr < 0xFEA0 ):
       {
-        console.log( "Read from Sprite attrib memory" );
+        // console.log( "Read from Sprite attrib memory" );
         return 0;
       }
 
       // IO ports
       case ( 0xFF00 <= addr && addr < 0xFF80 ):
       {
-        console.log( "IO ports: " + addr.toString( 16 ));
+        emu.io_read( addr );
         return 0;
       }
 
@@ -162,7 +164,7 @@
       // Video RAM
       case ( 0x8000 <= addr && addr < 0xA000 ):
       {
-        console.log( "Write to video memory" );
+        //console.log( "Write to video memory: " + addr.toString( 16 ) );
         return;
       }
 
@@ -195,14 +197,15 @@
       // Sprite attrib memory
       case ( 0xFE00 <= addr && addr < 0xFEA0 ):
       {
-        console.log( "Sprite attrib memory" );
+        // console.log( "Sprite attrib memory" );
         return;
       }
 
       // IO ports
       case ( 0xFF00 <= addr && addr < 0xFF80 ):
       {
-        console.log( "IO ports: " + addr.toString( 16 ) );
+        postMessage( addr.toString( 16 ) );
+        emu.io_write( addr, val );
         return;
       }
 
@@ -216,7 +219,7 @@
       // Enable interrupts register
       case ( addr == 0xFFFF ):
       {
-        console.log( "Write enable interrupts" );
+        // console.log( "Write enable interrupts: " + val.toString( 16 ) );
         return;
       }
     }
@@ -224,4 +227,70 @@
     throw "Reserved memory: 0x" + addr.toString( 16 );
   }
 
-} ) ( window.emu = window.emu || { } );
+
+  /**
+   * Write a value to an IO register
+   */
+  emu.io_write = function( addr, value )
+  {
+    switch ( addr )
+    {
+      // LCDC
+      case 0xFF40:
+        return;
+
+      // STAT
+      case 0xFF41:
+        return;
+
+      // SCY
+      case 0xFF42:
+        return;
+
+      // SCX
+      case 0xFF43:
+        return;
+
+      // LY
+      case 0xFF44:
+        throw "IO register LY is read only";
+
+      // LYC
+      case 0xFF45:
+        return;
+
+      // DMA
+      case 0xFF46:
+        return;
+
+      // BGP
+      case 0xFF47:
+        return;
+
+      // OBP0
+      case 0xFF48:
+        return;
+
+      // OBP1
+      case 0xFF49:
+        return;
+
+      // WY
+      case 0xF4A:
+        return;
+
+      // WX
+      case 0xF4B:
+        return;
+    }
+  };
+
+
+  /**
+   * Read an IO register
+   */
+  emu.io_read = function( addr, value )
+  {
+
+  };
+} ) ( this.emu = this.emu || { } );

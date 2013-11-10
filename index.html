@@ -1,56 +1,24 @@
 <!DOCTYPE html>
 <html>
-	<head>
-		<title> JavaScript GameBoy Emulator </title>
-		<script type = "text/javascript" src = "lib/jquery.js" > </script>
-		<style type = "text/css">
-			#holder {
-				width: 640px;
-				border: 1px solid black;
-				margin-left: auto;
-				margin-right: auto;
-			}
+  <head>
+    <title> JavaScript GameBoy Emulator </title>
 
-			#control {
-				text-align: center;
-			}
-		</style>
-	</head>
-	<body>
-		<div id = "holder">
-			<canvas id = "display" width = "640" height = "576">
-			</canvas>
-			<div id = "control">
-				<input type = "button" id = "step" value = "Step" />
-				<table>
-					<tr>
-						<td colspan = "2"> PC </td><td id = "pc" colspan = "2"> </td>
-						<td colspan = "2"> SP </td><td id = "sp" colspan = "2"> </td>
-					</tr>
-					<tr>
-						<td colspan = "2"> AF </td><td id = "af" colspan = "2"> </td>
-						<td colspan = "2"> BC </td><td id = "bc" colspan = "2"> </td>
-					</tr>
-					<tr>
-						<td colspan = "2"> DE </td><td id = "de" colspan = "2"> </td>
-						<td colspan = "2"> HL </td><td id = "hl" colspan = "2"> </td>
-					</tr>
-					<tr>
-						<td> ZF </td><td id = "zf"> </td>
-						<td> NF </td><td id = "nf"> </td>
-						<td> HF </td><td id = "hf"> </td>
-						<td> CF </td><td id = "cf"> </td>
-					</tr>
-				</table>
-			</div>
-		</div>
-		<script type = "text/javascript" src = "script/cpu.js" > </script>
-		<script type = "text/javascript" src = "script/gpu.js" > </script>
-		<script type = "text/javascript" src = "script/ram.js" > </script>
-		<script type = "text/javascript" src = "script/rom.js" > </script>
-		<script type = "text/javascript" src = "script/emu.js" > </script>
-		<script type = "text/javascript">
-			emu.init( )
-		</script>
-	</body>
+    <meta http-equiv = "Content-Type" content = "text/html; charset=utf-8" />
+    <meta name = "gameboy,emulator,javascript" />
+    <meta name = "GameBoy emulator written in JavaScript" />
+
+    <link rel = "stylesheet" type = "text/css" href = "style/style.css" />
+
+    <script type = "text/javascript" src = "lib/jquery.js" > </script>
+    <script type = "text/javascript" src = "script/client.js" > </script>
+  </head>
+  <body>
+    <div id = "holder">
+      <canvas id = "lcd" width = "160" height = "144"></canvas>
+      <div id = "control">
+        <input type = "button" value = "Start" id = "btn-start" />
+        <input type = "button" value = "Pause" id = "btn-pause" />
+      </div>
+    </div>
+  </body>
 </html>

@@ -1,7 +1,8 @@
-// This file is part of the JavaScript GameBoy Emulator
-// Licensing information can be found in the LICENSE file
-// (C) 2013 Licker Nandor. All rights reserved.
-
+/**
+ * This file is part of the JavaScript GameBoy Emulator
+ * Licensing information can be found in the LICENSE file
+ * (C) 2013 Licker Nandor. All rights reserved.
+ */
 
 ( function ( emu )
 {
@@ -88,7 +89,6 @@
       }
     });
   }.bind( emu );
-
 
   // Allows access to flags
   var accessFlag = function( f, bit )
@@ -612,7 +612,8 @@
       // JR n
       case ( op == 0x18 ):
         emu.cycles += 8;
-        emu.pc = ( emu.pc + s8 - 1 ) & 0xFFFF;
+        emu.pc += 1;
+        emu.pc = ( emu.pc + s8 ) & 0xFFFF;
         return;
 
       // LDI (hl), a
@@ -704,8 +705,8 @@
       // CALL nn
       case ( op == 0xCD ):
         emu.cycles += 12;
-        emu.set_word( emu.sp, ( emu.pc + 2 ) & 0xFFFF );
         emu.sp = ( emu.sp - 2 ) & 0xFFFF;
+        emu.set_word( emu.sp, ( emu.pc + 2 ) & 0xFFFF );
         emu.pc = u16;
         return;
 
@@ -714,10 +715,10 @@
         op = emu.get_byte( emu.pc++ );
         x  = ( op & 0xC0 ) >> 6;
         y  = ( op & 0x38 ) >> 3;
-
+        z  = ( op & 7 );
         emu.cycles += z == 0x6 ? 16 : 8;
 
-        switch ( op & 7 )
+        switch ( x )
         {
           // rot[y] r[z]
           case 0x0:
@@ -726,7 +727,7 @@
 
           // BIT y, r[ z ]
           case 0x1:
-            emu.zf = ( get_r( z ) & ( 1 << y ) ) != 0x00;
+            emu.zf = ( get_r( z ) & ( 1 << y ) ) == 0x00;
             emu.nf = false;
             emu.hf = true;
             return;
@@ -789,8 +790,8 @@
       // RET
       case ( op == 0xC9 ):
         emu.cycles += 8;
-        emu.sp = ( emu.sp + 2 ) & 0xFFFF;
         emu.pc = emu.get_word( emu.sp );
+        emu.sp = ( emu.sp + 2 ) & 0xFFFF;
         return;
 
       // RETI
@@ -904,8 +905,8 @@
       // RST y * 8
       case ( ( op & 0xC7 ) == 0xC7 ):
         emu.cycles += 32;
+        emu.sp = ( emu.sp - 2 ) & 0xFFFF;
         emu.set_word( emu.sp, emu.pc );
-        emu.sp = ( emu.sp + 2 ) & 0xFFFF;
         emu.pc = y << 3;
         return;
 
@@ -937,7 +938,6 @@
       // POP nn
       case ( ( op & 0xCF ) == 0xC1 ):
         emu.cycles += 12;
-        emu.sp = ( emu.sp + 2 ) & 0xFFFF;
 
         switch ( p ) {
           case 0x0: emu.bc = emu.get_word( emu.sp ); break;
@@ -945,29 +945,30 @@
           case 0x2: emu.hl = emu.get_word( emu.sp ); break;
           case 0x3: emu.af = emu.get_word( emu.sp ); break;
         }
-
+        emu.sp = ( emu.sp + 2 ) & 0xFFFF;
         return;
 
       // PUSH nn
       case ( ( op & 0xCF ) == 0xC5 ):
         emu.cycles += 16;
+        emu.sp = ( emu.sp - 2 ) & 0xFFFF;
+
         switch ( p ) {
           case 0x0: emu.set_word( emu.sp, emu.bc ); break;
           case 0x1: emu.set_word( emu.sp, emu.de ); break;
           case 0x2: emu.set_word( emu.sp, emu.hl ); break;
           case 0x3: emu.set_word( emu.sp, emu.af ); break;
         }
-
-        emu.sp = ( emu.sp - 2 ) & 0xFFFF;
         return;
 
       // JR cc, n
       case ( ( op & 0xE7 ) == 0x20 ):
         emu.cycles += 8;
+        emu.pc += 1;
 
         if ( check_cond( y - 4 ) ) {
           emu.cycles += 4;
-          emu.pc = ( emu.pc + s8 - 1 ) & 0xFFFF;
+          emu.pc = ( emu.pc + s8 ) & 0xFFFF;
         }
 
         return;
@@ -978,8 +979,8 @@
 
         if ( check_cond( y ) ) {
           emu.cycles += 12;
-          emu.sp = ( emu.sp + 2 ) & 0xFFFF;
           emu.pc = emu.get_word( emu.sp );
+          emu.sp = ( emu.sp + 2 ) & 0xFFFF;
         }
 
         return;
@@ -1021,4 +1022,4 @@
       instr( emu.get_byte( emu.pc++ ) );
     }
   }
-} ) ( window.emu = window.emu || { } );
+} ) ( this.emu = this.emu || { } );
