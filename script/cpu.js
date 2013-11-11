@@ -336,7 +336,7 @@
       {
         emu.a = ( emu.a & n ) & 0xFF;
 
-        emu.zf = emu.a == 0;
+        emu.zf = emu.a == 0x00;
         emu.nf = false;
         emu.hf = true;
         emu.cf = false;
@@ -349,7 +349,7 @@
       {
         emu.a = ( emu.a ^ n ) & 0xFF;
 
-        emu.zf = emu.a == 0;
+        emu.zf = emu.a == 0x00;
         emu.nf = false;
         emu.hf = false;
         emu.cf = false;
@@ -394,7 +394,7 @@
         r = get_r( z );
         c = ( r & 0x80 ) >> 7;
 
-        emu.cf = r != 0x00;
+        emu.cf = ( r & 0x80 ) != 0x00;
         emu.nf = false;
         emu.hf = false;
         r = ( ( r << 1 ) | c ) & 0xFF;
@@ -408,7 +408,7 @@
         r = get_r( z );
         c = ( r & 0x01 ) << 7;
 
-        emu.cf = r != 0x00;
+        emu.cf = ( r & 0x01 ) != 0x00;
         emu.nf = false;
         emu.hf = false;
         r = ( ( r >> 1 ) | c ) & 0xFF;
@@ -441,7 +441,9 @@
         emu.cf = ( r & 0x01 ) != 0x00;
         emu.nf = false;
         emu.hf = false;
+
         r = ( ( r >> 1 ) | c ) & 0xFF;
+
         emu.zf = r == 0x00;
 
         set_r( z, r );
@@ -454,7 +456,9 @@
         emu.cf = ( r & 0x80 ) != 0x00;
         emu.nf = false;
         emu.hf = false;
+
         r = ( ( r << 1 ) | ( r & 0x1 ) ) & 0xFF;
+
         emu.zf = r == 0x00;
 
         set_r( z, r );
@@ -467,7 +471,9 @@
         emu.cf = ( r & 0x1 ) != 0x00;
         emu.nf = false;
         emu.hf = false;
+
         r = ( ( r >> 1 ) | ( r & 0x80 ) ) & 0xFF;
+
         emu.zf = r == 0x00;
 
         set_r( z, r );
@@ -480,7 +486,10 @@
         emu.cf = ( y & 0x80 ) != 0x00;
         emu.nf = false;
         emu.hf = false;
-        emu.zf = ( r <<= 1 ) == 0x00;
+
+        r = ( r << 1 ) & 0xFF;
+
+        emu.zf = r == 0x00;
 
         set_r( z, r );
         return;
@@ -492,7 +501,10 @@
         emu.cf = ( r & 0x01 ) != 0x00;
         emu.nf = false;
         emu.hf = false;
-        emu.zf = ( r >>= 1 ) == 0x00;
+
+        r = ( r >> 1 ) & 0xFF;
+
+        emu.zf = r == 0x00;
 
         set_r( z, r );
         return;
@@ -534,12 +546,12 @@
       case ( op == 0x07 ):
         emu.cycles += 4;
 
-        var c = this.cf ? 0x01 : 0x00;
+        c = emu.cf ? 0x01 : 0x00;
 
         emu.cf = ( emu.a & 0x80 ) != 0x00;
         emu.nf = false;
         emu.hf = false;
-        emu.zf = ( ( emu.a <<= 1 ) | c2 ) == 0x00;
+        emu.zf = ( ( emu.a <<= 1 ) | c ) == 0x00;
         return;
 
       // LD (nn), sp
@@ -559,7 +571,7 @@
       case ( op == 0x0F ):
         emu.cycles += 4;
 
-        var c = this.cf ? 0x80 : 0x00;
+        var c = emu.cf ? 0x80 : 0x00;
 
         emu.cf = ( emu.a & 0x01 ) != 0x00;
         emu.nf = false;
@@ -571,7 +583,7 @@
       case ( op == 0x10 ):
         emu.cycles += 4;
         emu.pc += 1;
-        console.log( "Unimplemented: STOP" );
+//        console.log( "Unimplemented: STOP" );
         return;
 
       // LD (de), a
@@ -757,7 +769,7 @@
             set_r( z, get_r( z ) & ( ~ ( 1 << y ) ) );
             return;
 
-          // TEST y, r[ z ]
+          // SET y, r[ z ]
           case 0x3:
             set_r( z, get_r( z ) | ( 1 << y ) );
             return;
@@ -817,7 +829,7 @@
       // LD a, (c)
       case ( op == 0xF2 ):
         emu.cycles += 12;
-        this.a = emu.get_byte( 0xFF00 + emu.c );
+        emu.a = emu.get_byte( 0xFF00 + emu.c );
         return;
 
       // DI
@@ -830,7 +842,7 @@
         emu.cycles += 12;
         emu.pc += 1;
 
-        emu.hl = alu_add_16( sp, s8 );
+        emu.hl = alu_add_16( emu.sp, s8 );
         emu.zf = false;
         emu.nf = false;
         return;
@@ -894,7 +906,7 @@
         emu.cycles += y == 0x6 ? 12 : 4;
         r = get_r( y );
 
-        c == ( ( ( r >>> 0 & 0x0F ) + 0xFF ) ) & 0x1F;
+        c = ( ( ( r >>> 0 ) & 0x0F ) + 0xFF ) & 0x1F;
         r = ( r - 1 ) & 0xFF;
 
         emu.zf = r == 0x00;
@@ -1043,9 +1055,14 @@
     */
   emu.tick = function( )
   {
-    if ( !emu.halted )
-    {
-      instr( emu.get_byte( emu.pc++ ) );
-    }
+    if ( emu.halted )
+      return;
+
+    emu.lcd_ly = Math.floor( emu.cycles / 437 ) % 154;
+
+    instr( emu.get_byte( emu.pc++ ) );
+
+    if ( emu.pc == emu.debug_break )
+      emu.halted = true;
   }
 } ) ( this.emu = this.emu || { } );

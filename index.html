@@ -17,7 +17,34 @@
       <canvas id = "lcd" width = "160" height = "144"></canvas>
       <div id = "control">
         <input type = "button" value = "Start" id = "btn-start" />
-        <input type = "button" value = "Stop" id = "btn-stop" />
+        <input type = "button" value = "Stop"  id = "btn-stop" />
+        <input type = "button" value = "Step"  id = "btn-step" />
+        <table id = "dbg" >
+          <tr>
+            <td>A</td><td id = "dbg-reg-a"></td>
+            <td>F</td><td id = "dbg-reg-f"></td>
+          </tr>
+          <tr>
+            <td>B</td><td id = "dbg-reg-b"></td>
+            <td>C</td><td id = "dbg-reg-c"></td>
+          </tr>
+          <tr>
+            <td>D</td><td id = "dbg-reg-d"></td>
+            <td>E</td><td id = "dbg-reg-e"></td>
+          </tr>
+          <tr>
+            <td>H</td><td id = "dbg-reg-h"></td>
+            <td>L</td><td id = "dbg-reg-l"></td>
+          </tr>
+          <tr>
+            <td colspan = "2">SP</td>
+            <td colspan = "2" id = "dbg-reg-sp"></td>
+          </tr>
+          <tr>
+            <td colspan = "2">PC</td>
+            <td colspan = "2" id = "dbg-reg-pc"></td>
+          </tr>
+        </table>
       </div>
     </div>
   </body>

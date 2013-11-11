@@ -60,7 +60,7 @@ ROM.prototype.check_data = function( )
   }
 
   if ( (sum & 0xFFFF) != this.data_sum ) {
-    throw "Header checksum mismatch 0x" + ( sum & 0xFFFF).toString( 16 );
+    //throw "Header checksum mismatch 0x" + ( sum & 0xFFFF).toString( 16 );
   }
 }
 

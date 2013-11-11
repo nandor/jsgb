@@ -95,6 +95,7 @@
         {
           return emu.boot_rom[ addr ];
         }
+
         return emu.ram[ addr ];
       }
 
@@ -146,12 +147,12 @@
       // Enable interrupts register
       case ( addr == 0xFFFF ):
       {
-        console.log( "Read enable interrupts" );
+        //console.log( "Read enable interrupts" );
         return 0;
       }
     }
 
-    throw "Reserved memory at 0x" + addr.toString( 16 );
+    throw new Error( "Reserved memory at 0x" + addr.toString( 16 ) );
   }
 
   /**
@@ -160,6 +161,13 @@
   emu.set_byte = function( addr, val )
   {
     switch ( true ) {
+      // Restart and interrupt vectors
+      case ( 0x0000 <= addr && addr < 0x0100 ):
+      {
+        emu.ram[ addr ] = val & 0xFF;
+        return;
+      }
+
       // Video RAM
       case ( 0x8000 <= addr && addr < 0xA000 ):
       {
@@ -222,7 +230,7 @@
       }
     }
 
-    throw "Reserved memory: 0x" + addr.toString( 16 );
+    throw new Error( "Reserved memory at 0x" + addr.toString( 16 ) );
   }
 
 
@@ -251,12 +259,12 @@
 
       // SCY
       case 0xFF42:
-        this.lcd_scy = val & 0xFF;
+        emu.lcd_scy = val & 0xFF;
         return;
 
       // SCX
       case 0xFF43:
-        this.lcd_scx = val & 0xFF;
+        emu.lcd_scx = val & 0xFF;
         return;
 
       // LY
@@ -288,19 +296,24 @@
         return;
 
       // WY
-      case 0xF4A:
+      case 0xFF4A:
         if ( val < 0 || 143 < val )
           throw "WY out of range: " + val.toString( 16 );
 
-        this.lcd_wy = val & 0xFF;
+        emu.lcd_wy = val & 0xFF;
         return;
 
       // WX
-      case 0xF4B:
+      case 0xFF4B:
         if ( val < 0 || 166 < val )
           throw "WX out of range: " + val.toString( 16 );
 
-        this.lcd_wx = val & 0xFF;
+        emu.lcd_wx = val & 0xFF;
+        return;
+
+      // DMG ROM enable
+      case 0xFF50:
+        emu.boot_rom_enabled = ( val & 0x01 ) != 0x00;
         return;
     }
   };
@@ -368,11 +381,11 @@
         return;
 
       // WY
-      case 0xF4A:
+      case 0xFF4A:
         return emu.lcd_wy;
 
       // WX
-      case 0xF4B:
+      case 0xFF4B:
         return emu.lcd_wx;
     }
   };

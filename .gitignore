@@ -1,4 +1,7 @@
 *.gbc
 *.gb
 *sublime*
+*.asm
+*.exe
+*.ini
 
