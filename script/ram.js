@@ -95,9 +95,9 @@
         {
           return emu.boot_rom[ addr ];
         }
-
         return emu.ram[ addr ];
       }
+
       // ROM
       case ( 0x0000 <= addr && addr < 0x8000 ):
       {
@@ -134,8 +134,7 @@
       // IO ports
       case ( 0xFF00 <= addr && addr < 0xFF80 ):
       {
-        emu.io_read( addr );
-        return 0;
+        return emu.io_read( addr );
       }
 
       // Hight RAM area
@@ -164,7 +163,7 @@
       // Video RAM
       case ( 0x8000 <= addr && addr < 0xA000 ):
       {
-        //console.log( "Write to video memory: " + addr.toString( 16 ) );
+        emu.ram[ addr ] = val & 0xFF;
         return;
       }
 
@@ -197,14 +196,13 @@
       // Sprite attrib memory
       case ( 0xFE00 <= addr && addr < 0xFEA0 ):
       {
-        // console.log( "Sprite attrib memory" );
+        console.log( "Sprite attrib memory" );
         return;
       }
 
       // IO ports
       case ( 0xFF00 <= addr && addr < 0xFF80 ):
       {
-        postMessage( addr.toString( 16 ) );
         emu.io_write( addr, val );
         return;
       }
@@ -231,12 +229,20 @@
   /**
    * Write a value to an IO register
    */
-  emu.io_write = function( addr, value )
+  emu.io_write = function( addr, val )
   {
     switch ( addr )
     {
       // LCDC
       case 0xFF40:
+        emu.lcd_enable      = val & 0x80 ? true : false;
+        emu.lcd_wnd_tilemap = val & 0x40 ? 0x9C00 : 0x9800;
+        emu.lcd_wnd_display = val & 0x20 ? true : false;
+        emu.lcd_tile_data   = val & 0x10 ? 0x8000 : 0x8800;
+        emu.lcd_bg_tilemap  = val & 0x08 ? 0x9C00 : 0x9800;
+        emu.lcd_obj_size    = val & 0x04 ? 16 : 8;
+        emu.lcd_obj_display = val & 0x02 ? true : false;
+        emu.lcd_bg_display  = val & 0x01 ? true : false;
         return;
 
       // STAT
@@ -245,10 +251,12 @@
 
       // SCY
       case 0xFF42:
+        this.lcd_scy = val & 0xFF;
         return;
 
       // SCX
       case 0xFF43:
+        this.lcd_scx = val & 0xFF;
         return;
 
       // LY
@@ -265,6 +273,10 @@
 
       // BGP
       case 0xFF47:
+        emu.lcd_bg[ 0 ] = ( val & 0x03 ) >> 0;
+        emu.lcd_bg[ 1 ] = ( val & 0x0C ) >> 2;
+        emu.lcd_bg[ 2 ] = ( val & 0x30 ) >> 4;
+        emu.lcd_bg[ 3 ] = ( val & 0xC0 ) >> 6;
         return;
 
       // OBP0
@@ -277,10 +289,18 @@
 
       // WY
       case 0xF4A:
+        if ( val < 0 || 143 < val )
+          throw "WY out of range: " + val.toString( 16 );
+
+        this.lcd_wy = val & 0xFF;
         return;
 
       // WX
       case 0xF4B:
+        if ( val < 0 || 166 < val )
+          throw "WX out of range: " + val.toString( 16 );
+
+        this.lcd_wx = val & 0xFF;
         return;
     }
   };
@@ -289,8 +309,71 @@
   /**
    * Read an IO register
    */
-  emu.io_read = function( addr, value )
+  emu.io_read = function( addr )
   {
+    var ret;
 
+    switch ( addr )
+    {
+      // LCDC
+      case 0xFF40:
+        ret |= emu.lcd_enable                ? 0x80 : 0x00;
+        ret |= emu.lcd_wnd_tilemap == 0x9C00 ? 0x40 : 0x00;
+        ret |= emu.lcd_wnd_display           ? 0x20 : 0x00;
+        ret |= emu.lcd_tile_data == 0x8000   ? 0x10 : 0x00;
+        ret |= emu.lcd_bg_tilemap == 0x9C00  ? 0x08 : 0x00;
+        ret |= emu.lcd_obj_size == 16        ? 0x04 : 0x00;
+        ret |= emu.lcd_obj_display           ? 0x02 : 0x00;
+        ret |= emu.lcd_bg_display            ? 0x01 : 0x00;
+        return ret;
+
+      // STAT
+      case 0xFF41:
+        return;
+
+      // SCY
+      case 0xFF42:
+        return emu.lcd_scy;
+
+      // SCX
+      case 0xFF43:
+        return emu.lcd_scx;
+
+      // LY
+      case 0xFF44:
+        return emu.lcd_ly;
+
+      // LYC
+      case 0xFF45:
+        return;
+
+      // DMA
+      case 0xFF46:
+        return;
+
+      // BGP
+      case 0xFF47:
+        ret |= emu.lcd_bg[ 0 ] << 0;
+        ret |= emu.lcd_bg[ 1 ] << 2;
+        ret |= emu.lcd_bg[ 2 ] << 4;
+        ret |= emu.lcd_bg[ 3 ] << 6;
+        return;
+
+      // OBP0
+      case 0xFF48:
+        return;
+
+      // OBP1
+      case 0xFF49:
+        return;
+
+      // WY
+      case 0xF4A:
+        return emu.lcd_wy;
+
+      // WX
+      case 0xF4B:
+        return emu.lcd_wx;
+    }
   };
 } ) ( this.emu = this.emu || { } );

@@ -394,10 +394,11 @@
         r = get_r( z );
         c = ( r & 0x80 ) >> 7;
 
-        this.cf = cf != 0x00;
-        this.nf = false;
-        this.hf = false;
-        this.zf = ( ( r <<= 1 ) | c) != 0x00;
+        emu.cf = r != 0x00;
+        emu.nf = false;
+        emu.hf = false;
+        r = ( ( r << 1 ) | c ) & 0xFF;
+        emu.zf = r == 0x00;
 
         set_r( z, r );
         return;
@@ -407,10 +408,11 @@
         r = get_r( z );
         c = ( r & 0x01 ) << 7;
 
-        this.cf = c != 0x80;
-        this.nf = false;
-        this.hf = false;
-        this.zf = ( ( r >>= 1 ) | c ) != 0x00;
+        emu.cf = r != 0x00;
+        emu.nf = false;
+        emu.hf = false;
+        r = ( ( r >> 1 ) | c ) & 0xFF;
+        emu.zf = r == 0x00;
 
         set_r( z, r );
         return;
@@ -418,12 +420,15 @@
       // RL n
       case 0x2:
         r = get_r( z );
-        c = this.cf ? 1 : 0;
+        c = emu.cf ? 0x01 : 0x00;
 
-        this.cf = ( y & 0x80 ) != 0x00;
-        this.nf = false;
-        this.hf = false;
-        this.zf = ( ( r <<= 1 ) | c ) != 0x00;
+        emu.cf = ( r & 0x80 ) != 0x00;
+        emu.nf = false;
+        emu.hf = false;
+
+        r = ( ( r << 1 ) | c ) & 0xFF;
+
+        emu.zf = r == 0x00;
 
         set_r( z, r );
         return;
@@ -431,12 +436,13 @@
       // RR n
       case 0x3:
         r = get_r( z );
-        c = this.cf ? 1 : 0;
+        c = emu.cf ? 0x80 : 0x00;
 
-        this.cf = ( y & 0x01 ) != 0x00;
-        this.nf = false;
-        this.hf = false;
-        this.zf = ( ( r >>= 1 ) | c ) != 0x00;
+        emu.cf = ( r & 0x01 ) != 0x00;
+        emu.nf = false;
+        emu.hf = false;
+        r = ( ( r >> 1 ) | c ) & 0xFF;
+        emu.zf = r == 0x00;
 
         set_r( z, r );
         return;
@@ -445,10 +451,11 @@
       case 0x4:
         r = get_r( z );
 
-        this.cf = ( r & 0x80 ) != 0x00;
-        this.nf = false;
-        this.hf = false;
-        this.zf = ( ( r <<= 1 ) | ( r & 0x01 ) ) == 0x00;
+        emu.cf = ( r & 0x80 ) != 0x00;
+        emu.nf = false;
+        emu.hf = false;
+        r = ( ( r << 1 ) | ( r & 0x1 ) ) & 0xFF;
+        emu.zf = r == 0x00;
 
         set_r( z, r );
         return;
@@ -457,10 +464,11 @@
       case 0x5:
         r = get_r( z );
 
-        this.cf = ( r & 0x1 ) != 0x00;
-        this.nf = false;
-        this.hf = false;
-        this.zf = ( ( r >>= 1 ) | ( r & 0x80 ) ) == 0x00;
+        emu.cf = ( r & 0x1 ) != 0x00;
+        emu.nf = false;
+        emu.hf = false;
+        r = ( ( r >> 1 ) | ( r & 0x80 ) ) & 0xFF;
+        emu.zf = r == 0x00;
 
         set_r( z, r );
         return;
@@ -469,10 +477,10 @@
       case 0x6:
         r = get_r( z );
 
-        this.cf = ( y & 0x80 ) != 0x00;
-        this.nf = false;
-        this.hf = false;
-        this.zf = ( r <<= 1 ) == 0x00;
+        emu.cf = ( y & 0x80 ) != 0x00;
+        emu.nf = false;
+        emu.hf = false;
+        emu.zf = ( r <<= 1 ) == 0x00;
 
         set_r( z, r );
         return;
@@ -481,10 +489,10 @@
       case 0x7:
         r = get_r( z );
 
-        this.cf = ( r & 0x01 ) != 0x00;
-        this.nf = false;
-        this.hf = false;
-        this.zf = ( r >>= 1 ) == 0x00;
+        emu.cf = ( r & 0x01 ) != 0x00;
+        emu.nf = false;
+        emu.hf = false;
+        emu.zf = ( r >>= 1 ) == 0x00;
 
         set_r( z, r );
         return;
@@ -502,6 +510,7 @@
     var z = op & 7;
     var p = y >> 1;
     var q = y & 1;
+    var r, c;
 
     var u8 = emu.get_byte( emu.pc );
     var s8 = alu_extend_8( u8 );
@@ -580,15 +589,14 @@
       // RLA
       case ( op == 0x17 ):
         emu.cycles += 4;
+
+        c = emu.cf ? 0x01 : 0x00;
+
         emu.cf = ( emu.a & 0x80 ) != 0x00;
         emu.nf = false;
         emu.hf = false;
 
-        if ( emu.cf ) {
-          emu.a = ( ( emu.a << 1) | 0x01 ) & 0xFF;
-        } else {
-          emu.a = ( emu.a << 1 ) & 0xFF;
-        }
+        emu.a = ( ( emu.a << 1) | c ) & 0xFF;
 
         emu.zf = emu.a == 0x00;
         return;
@@ -596,15 +604,14 @@
       // RRA
       case ( op == 0x1F ):
         emu.cycles += 4;
+
+        c = emu.cf ? 0x80 : 0x00;
+
         emu.cf = ( emu.a & 0x01 ) != 0x00;
         emu.nf = false;
         emu.hf = false;
 
-        if ( emu.cf ) {
-          emu.a = ( emu.a >> 1) | 0x80;
-        } else {
-          emu.a = emu.a >> 1;
-        }
+        emu.a = ( ( emu.a >> 1) | c ) & 0xFF;
 
         emu.zf = emu.a == 0x00;
         return;
@@ -710,6 +717,19 @@
         emu.pc = u16;
         return;
 
+      // JP nn
+      case ( op == 0xC3 ):
+        emu.cycles += 12;
+        emu.pc = u16;
+        return;
+
+      // RET
+      case ( op == 0xC9 ):
+        emu.cycles += 8;
+        emu.pc = emu.get_word( emu.sp );
+        emu.sp = ( emu.sp + 2 ) & 0xFFFF;
+        return;
+
       // CB prefix
       case ( op == 0xCB ):
         op = emu.get_byte( emu.pc++ );
@@ -781,19 +801,6 @@
         emu.set_byte( u16, emu.a );
         return;
 
-      // JP nn
-      case ( op == 0xC3 ):
-        emu.cycles += 12;
-        emu.pc = u16;
-        return;
-
-      // RET
-      case ( op == 0xC9 ):
-        emu.cycles += 8;
-        emu.pc = emu.get_word( emu.sp );
-        emu.sp = ( emu.sp + 2 ) & 0xFFFF;
-        return;
-
       // RETI
       case ( op == 0xD9 ):
         emu.cycles += 8;
@@ -816,7 +823,6 @@
       // DI
       case ( op == 0xF3 ):
         emu.cycles += 4;
-        console.log( "Not implemented: DI" );
         return;
 
       // LDHL sp, n
@@ -871,13 +877,31 @@
       // INC r[p]
       case ( ( op & 0xC7 ) == 0x04 ):
         emu.cycles += y == 0x6 ? 12 : 4;
-        set_r( y, ( get_r( y ) + 1 ) & 0xFF );
+        r = get_r( y );
+
+        c = ( ( ( r >>> 0 ) & 0x0F ) + 0x01 ) & 0x1F;
+        r = ( r + 1 ) & 0xFF;
+
+        emu.zf = r == 0x00;
+        emu.nf = false;
+        emu.hf = ( c & 0x10 ) != 0x00;
+
+        set_r( y, r );
         return;
 
       // DEC r[p]
       case ( ( op & 0xC7 ) == 0x05 ):
         emu.cycles += y == 0x6 ? 12 : 4;
-        set_r( y, ( get_r( y ) - 1 ) & 0xFF );
+        r = get_r( y );
+
+        c == ( ( ( r >>> 0 & 0x0F ) + 0xFF ) ) & 0x1F;
+        r = ( r - 1 ) & 0xFF;
+
+        emu.zf = r == 0x00;
+        emu.nf = true;
+        emu.hf = ( c & 0x10 ) == 0x00;
+
+        set_r( y, r );
         return;
 
       // LD r[y], n
@@ -1003,6 +1027,8 @@
 
         if ( check_cond( y ) ) {
           emu.cycles += 12;
+          emu.sp = ( emu.sp - 2 ) & 0xFFFF;
+          emu.set_word( emu.sp, ( emu.pc + 2 ) & 0xFFFF );
           emu.pc = u16;
         }
         return;

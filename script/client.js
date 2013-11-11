@@ -10,6 +10,7 @@ $( function () {
   var vram    = null;
   var worker  = null;
   var running = false;
+  var frame   = null;
 
 
   /**
@@ -35,9 +36,22 @@ $( function () {
   /**
    * Handles messages from the worker thread
    */
-  function message( data )
+  function message( msg )
   {
-    console.log( data );
+    switch ( msg.type )
+    {
+      case 'vsync':
+        for ( var i = 0; i < vram.data.length; ++i )
+        {
+          vram.data[ i ] = msg.data[ i ];
+        }
+
+        ctx.putImageData( vram, 0, 0 );
+        return;
+      case 'log':
+        console.log( msg.data );
+        return;
+    }
   }
 
 
@@ -52,12 +66,14 @@ $( function () {
 
     // Get the canvas
     canvas = $("#lcd").get( 0 );
-    if ( !canvas ) {
+    if ( !canvas )
+    {
       throw "Canvas not found"
     }
 
     ctx = canvas.getContext( '2d' )
-    if ( !ctx ) {
+    if ( !ctx )
+    {
       throw "Cannot create context";
     }
 
@@ -65,13 +81,14 @@ $( function () {
 
     // Spawn the worker
     worker = new Worker( 'script/emu.js' );
-    worker.addEventListener( 'message', function( e ) {
+    worker.addEventListener( 'message', function( e )
+    {
       message( e.data );
       running = false;
     } );
 
     // Start the emulator
-    worker.postMessage( "test.gb" );
+    worker.postMessage( "../test.gb" );
     running = true;
   } );
 
@@ -81,7 +98,17 @@ $( function () {
    */
   $( document ).on( 'click', "#btn-stop", function( )
   {
-    worker.terminate( );
+    if ( worker )
+    {
+      worker.terminate( );
+    }
+
+    if ( frame )
+    {
+      clearInterval( frame );
+    }
+
+    frame   = null;
     worker  = null;
     running = false;
   } );
