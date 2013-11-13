@@ -186,7 +186,6 @@
       case ( 0xC000 <= addr && addr < 0xE000 ):
       {
         emu.ram[ addr ] = val & 0xFF;
-
         if ( addr + 0x4000 < 0xFE00 ) {
           emu.ram[ addr + 0x4000 ] = val & 0xFF;
         }
@@ -313,6 +312,7 @@
 
       // DMG ROM enable
       case 0xFF50:
+        emu.lcd_ly = 0x90;
         emu.boot_rom_enabled = ( val & 0x01 ) != 0x00;
         return;
     }

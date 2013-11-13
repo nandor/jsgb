@@ -8,6 +8,7 @@
 {
   emu.cycles = 0;
   emu.halted = false;
+  emu.vblank = false;
 
   // Interrupt enable register
   emu.iePins   = false;
@@ -71,7 +72,7 @@
       },
       set: function( n )
       {
-        reg[ rr[ 1 ] ] = n & 0xFF;
+        reg[ rr[ 1 ] ] = (rr[ 1 ] == 'f' ) ? ( n & 0xF0 ) : ( n & 0xFF );
         reg[ rr ] = (reg[ rr ] & 0xFF00) | ( n & 0xFF);
       }
     });
@@ -83,9 +84,9 @@
       },
       set: function( n )
       {
-        reg[ rr ] = n & 0xFFFF;
+        reg[ rr ] = ( rr == 'af' ) ? ( n & 0xFFF0 ) : ( n & 0xFFFF );
         reg[ rr[ 0 ] ] = ( n & 0xFF00 ) >> 8;
-        reg[ rr[ 1 ] ] = ( n & 0x00FF ) >> 0;
+        reg[ rr[ 1 ] ] = ( rr[ 1 ] == 'f' ) ? ( n & 0x00F0 ) : ( n & 0x00FF );
       }
     });
   }.bind( emu );
@@ -101,12 +102,14 @@
       set: function( n )
       {
         if ( n ) {
-          reg[ 'f' ] |= ( 1 << bit );
+          reg[ 'f' ]  |= ( 1 << bit );
+          reg[ 'af' ] |= ( 1 << bit );
         } else {
-          reg[ 'f' ] &= ~( 1 << bit );
+          reg[ 'f' ]  &= ~( 1 << bit );
+          reg[ 'af' ] &= ~( 1 << bit );
         }
       }
-    });
+    } );
   }.bind( emu );
 
 
@@ -120,71 +123,6 @@
   accessFlag( 'nf', 6 );
   accessFlag( 'hf', 5 );
   accessFlag( 'cf', 4 );
-
-
-  /**
-   * Sets the flags after an 8 bit ADD
-   */
-  var alu_add_8 = function( a, b )
-  {
-    var a8 = ( a >>> 0 ) & 0x0FF;
-    var b8 = ( b >>> 0 ) & 0x0FF;
-    var r9 = ( a8 + b8 ) & 0x1FF;
-
-    var a4 = ( a >>> 0 ) & 0x0F;
-    var b4 = ( b >>> 0 ) & 0x0F;
-    var r5 = ( a4 + b4 ) & 0x1F;
-
-    emu.zf = ( r9 & 0xFF ) == 0x00;
-    emu.nf = false;
-    emu.hf = ( r5 & 0x010 ) != 0x00;
-    emu.cf = ( r9 & 0x100 ) != 0x00;
-
-    return r9 & 0xFF;
-  }
-
-  /**
-   * Sets the flags after an 8 bit SUB
-   */
-  var alu_sub_8 = function( a, b )
-  {
-    var a8 = ( a >>> 0 ) & 0xFF;
-    var b8 = ( ( ~b >>> 0 ) + 1 ) & 0xFF;
-    var r9 = ( a8 + b8 ) & 0x1FF;
-
-    var a4 = ( a >>> 0 ) & 0xF;
-    var b4 = ( ( ~b >>> 0 ) + 1 ) & 0xF;
-    var r5 = ( a4 + b4 ) & 0x1F;
-
-    emu.zf = ( r9 & 0x0FF ) == 0x00;
-    emu.nf = true;
-    emu.hf = ( r5 & 0x010 ) == 0x00;
-    emu.cf = ( r9 & 0x100 ) == 0x00;
-
-    return r9 & 0xFF;
-  }
-
-
-  /**
-   * Sets the flags after a 16 bit ADD
-   */
-  var alu_add_16 = function( a, b )
-  {
-    var a16 = ( a >>> 0 ) & 0x0FFFF;
-    var b16 = ( b >>> 0 ) & 0x0FFFF;
-    var r17 = ( a16 + b16 ) & 0x1FFFF;
-
-    var a12 = ( a >>> 0 ) & 0x0FFF;
-    var b12 = ( a >>> 0 ) & 0x0FFF;
-    var r13 = ( a12 + b12 ) & 0x1FFF;
-
-    emu.zf = ( r17 & 0xFFFF ) == 0x0000;
-    emu.nf = false;
-    emu.hf = ( r13 & 0x01000 ) != 0x00000;
-    emu.cf = ( r17 & 0x10000 ) != 0x00000;
-
-    return r17 & 0xFFFF;
-  }
 
 
   /**
@@ -291,43 +229,67 @@
   }
 
   /**
-   * Initialises ALU operations
+   * 8 bit arithmetic
    */
   var alu_8 = function( y, n )
   {
+    var tmp;
+
     switch ( y )
     {
       // ADD n
       case 0:
       {
-        emu.a = alu_add_8( emu.a, n );
+        tmp = emu.a + n;
+
+        emu.zf = ( tmp & 0xFF ) == 0x00;
+        emu.nf = false;
+        emu.hf = ( tmp & 0x0F ) < ( emu.a & 0x0F );
+        emu.cf = tmp > 0xFF;
+
+        emu.a = tmp & 0xFF;
         return;
       }
 
       // ADC n
       case 1:
       {
-        if ( emu.cf )
-          n = ( n + 1 ) & 0xFF;
+        tmp = emu.a + n + ( emu.cf ? 1 : 0 );
 
-        emu.a = alu_add_8( emu.a, n );
+        emu.zf = ( tmp & 0xFF ) == 0x00;
+        emu.nf = false;
+        emu.hf = ( emu.a & 0x0F ) + ( n & 0x0F ) + ( emu.cf ? 1 : 0 ) > 0x0F;
+        emu.cf = tmp > 0xFF;
+
+        emu.a = tmp & 0xFF;
         return;
       }
 
       // SUB n
       case 2:
       {
-        emu.a = alu_sub_8( emu.a, n );
+        tmp = emu.a - n;
+
+        emu.zf = ( tmp & 0xFF ) == 0x00;
+        emu.nf = true;
+        emu.hf = ( emu.a & 0x0F ) < ( tmp & 0xF );
+        emu.cf = tmp < 0x00;
+
+        emu.a = tmp & 0xFF;
         return;
       }
 
       // SBC n
       case 3:
       {
-        if ( emu.cf )
-          n = ( n + 1 ) & 0xFF;
+        tmp = emu.a - n - ( emu.cf ? 1 : 0 );
 
-        emu.a = alu_sub_8( emu.a, n );
+        emu.zf = ( tmp & 0xFF ) == 0x00;
+        emu.nf = true;
+        emu.hf = ( emu.a & 0x0F ) - ( n & 0x0F ) - ( emu.cf ? 1 : 0 ) < 0x00;
+        emu.cf = tmp < 0x00;
+
+        emu.a = tmp & 0xFF;
         return;
       }
 
@@ -340,7 +302,6 @@
         emu.nf = false;
         emu.hf = true;
         emu.cf = false;
-
         return;
       }
 
@@ -353,7 +314,6 @@
         emu.nf = false;
         emu.hf = false;
         emu.cf = false;
-
         return;
       }
 
@@ -362,18 +322,22 @@
       {
         emu.a = ( emu.a | n ) & 0xFF;
 
-        emu.zf = emu.a == 0;
+        emu.zf = emu.a == 0x00;
         emu.nf = false;
         emu.hf = false;
         emu.cf = false;
-
         return;
       }
 
       // CP n
       case 7:
       {
-        alu_sub_8( emu.a, n );
+        tmp = emu.a - n;
+
+        emu.zf = tmp == 0x00;
+        emu.nf = true;
+        emu.hf = ( tmp & 0x0F ) > ( emu.a & 0x0F );
+        emu.cf = tmp < 0x00;
         return;
       }
     }
@@ -457,7 +421,7 @@
         emu.nf = false;
         emu.hf = false;
 
-        r = ( ( r << 1 ) | ( r & 0x1 ) ) & 0xFF;
+        r = ( r << 1 ) & 0xFF;
 
         emu.zf = r == 0x00;
 
@@ -479,17 +443,16 @@
         set_r( z, r );
         return;
 
-      // SLL
+      // SWAP
       case 0x6:
         r = get_r( z );
 
-        emu.cf = ( y & 0x80 ) != 0x00;
+        emu.zf = r == 0x00;
+        emu.cf = false;
         emu.nf = false;
         emu.hf = false;
 
-        r = ( r << 1 ) & 0xFF;
-
-        emu.zf = r == 0x00;
+        r = ( ( r & 0x0F ) << 4 ) | ( ( r & 0xF0 ) >> 4 );
 
         set_r( z, r );
         return;
@@ -522,7 +485,7 @@
     var z = op & 7;
     var p = y >> 1;
     var q = y & 1;
-    var r, c;
+    var r, c, tmp;
 
     var u8 = emu.get_byte( emu.pc );
     var s8 = alu_extend_8( u8 );
@@ -551,7 +514,9 @@
         emu.cf = ( emu.a & 0x80 ) != 0x00;
         emu.nf = false;
         emu.hf = false;
-        emu.zf = ( ( emu.a <<= 1 ) | c ) == 0x00;
+        emu.zf = false;
+
+        emu.a = ( ( emu.a << 1 ) | ( ( emu.a & 0x80 ) >> 7 ) ) & 0xFF;
         return;
 
       // LD (nn), sp
@@ -576,7 +541,10 @@
         emu.cf = ( emu.a & 0x01 ) != 0x00;
         emu.nf = false;
         emu.hf = false;
-        emu.zf = ( ( emu.a >>= 1 ) | c ) == 0x00;
+        emu.zf = false;
+
+        emu.a = ( ( emu.a >> 1 ) | ( ( emu.a & 0x01 ) << 7 ) ) & 0xFF;
+
         return;
 
       // STOP
@@ -607,10 +575,9 @@
         emu.cf = ( emu.a & 0x80 ) != 0x00;
         emu.nf = false;
         emu.hf = false;
+        emu.zf = false;
 
         emu.a = ( ( emu.a << 1) | c ) & 0xFF;
-
-        emu.zf = emu.a == 0x00;
         return;
 
       // RRA
@@ -622,10 +589,9 @@
         emu.cf = ( emu.a & 0x01 ) != 0x00;
         emu.nf = false;
         emu.hf = false;
+        emu.zf = false;
 
         emu.a = ( ( emu.a >> 1) | c ) & 0xFF;
-
-        emu.zf = emu.a == 0x00;
         return;
 
       // JR n
@@ -646,35 +612,48 @@
       case ( op == 0x27 ):
         emu.cycles += 4;
 
-        var inc = 0x00, cf;
-        if ( emu.cf || emu.a > 0x99 ) {
-          inc |= 0x60;
-          cf = true;
-        } else {
-          inc &= 0x0F;
-          cf = false;
+        tmp = 0x00;
+        if ( emu.nf )
+        {
+          if ( emu.cf && emu.hf )
+          {
+            emu.a = ( emu.a + 0x9A ) & 0xFF;
+            emu.hf = false;
+          }
+          else if ( emu.cf )
+          {
+            emu.a = ( emu.a + 0xA0 ) & 0xFF;
+          }
+          else if ( emu.hf )
+          {
+            emu.a = ( emu.a + 0xFA ) & 0xFF;
+            emu.hf = false;
+          }
         }
+        else
+        {
+          if ( emu.cf || emu.a > 0x99 )
+          {
+            emu.a = ( emu. a + 0x60 ) & 0xFF;
+            emu.cf = true;
+          }
 
-        if ( emu.hf || ( emu.a & 0x0F ) > 0x09 ) {
-          inc |= 0x06;
-        }
-
-        if ( emu.nf ) {
-          emu.a = alu_sub_8( emu.a, inc );
-        } else {
-          emu.a = alu_add_8( emu.a, inc );
+          if ( emu.hf || ( emu.a & 0x0F) > 0x09 )
+          {
+            emu.a = ( emu.a + 0x06 ) & 0xFF;
+            emu.hf = false;
+          }
         }
 
         emu.zf = emu.a == 0x00;
-        emu.hf = false;
-        emu.cf = cf;
-
         return;
 
       // CPL
       case ( op == 0x2F ):
         emu.cycles += 4;
         emu.a = ~emu.a;
+        emu.nf = true;
+        emu.hf = true;
         return;
 
       // LDI a, (hl)
@@ -711,7 +690,7 @@
         emu.cycles += 4;
         emu.nf = false;
         emu.hf = false;
-        emu.cf = false;
+        emu.cf = !emu.cf;
         return;
 
       // HALT
@@ -795,9 +774,15 @@
         emu.cycles += 16;
         emu.pc += 2;
 
-        emu.sp = alu_add_16( emu.sp, s16 );
+        tmp = ( emu.sp + s8 ) & 0xFFFF;
+        c = emu.sp ^ s8 ^ tmp;
+
         emu.zf = false;
         emu.nf = false;
+        emu.hf = ( c & 0x0010 ) == 0x0010;
+        emu.cf = ( c & 0x0100 ) == 0x0100;
+
+        emu.sp = tmp;
         return;
 
       // JP (hl)
@@ -842,9 +827,15 @@
         emu.cycles += 12;
         emu.pc += 1;
 
-        emu.hl = alu_add_16( emu.sp, s8 );
+        tmp = ( emu.sp + s8 ) & 0xFFFF;
+        c = emu.sp ^ s8 ^ tmp;
+
         emu.zf = false;
         emu.nf = false;
+        emu.hf = ( c & 0x0010 ) == 0x0010;
+        emu.cf = ( c & 0x0100 ) == 0x0100;
+
+        emu.hl = tmp;
         return;
 
       // LD sp, hl
@@ -906,7 +897,7 @@
         emu.cycles += y == 0x6 ? 12 : 4;
         r = get_r( y );
 
-        c = ( ( ( r >>> 0 ) & 0x0F ) + 0xFF ) & 0x1F;
+        c = ( ( ( r >>> 0 ) & 0x0F ) + 0x0F ) & 0x1F;
         r = ( r - 1 ) & 0xFF;
 
         emu.zf = r == 0x00;
@@ -968,7 +959,14 @@
       // ADD hl, rp[p]
       case ( ( op & 0xCF ) == 0x09 ):
         emu.cycles += 8;
-        emu.hl = alu_add_16( emu.hl, get_rp( p ) );
+
+        tmp = emu.hl + get_rp( p );
+
+        emu.nf = false;
+        emu.hf = ( emu.hl & 0x0FFF ) > ( tmp & 0x0FFF );
+        emu.cf = tmp > 0xFFFF;
+
+        emu.hl = tmp & 0xFFFF;
         return;
 
       // POP nn
@@ -979,7 +977,11 @@
           case 0x0: emu.bc = emu.get_word( emu.sp ); break;
           case 0x1: emu.de = emu.get_word( emu.sp ); break;
           case 0x2: emu.hl = emu.get_word( emu.sp ); break;
-          case 0x3: emu.af = emu.get_word( emu.sp ); break;
+          case 0x3:
+          {
+            emu.af = emu.get_word( emu.sp );
+          }
+          break;
         }
         emu.sp = ( emu.sp + 2 ) & 0xFFFF;
         return;
@@ -1056,13 +1058,44 @@
   emu.tick = function( )
   {
     if ( emu.halted )
+    {
       return;
+    }
 
-    emu.lcd_ly = Math.floor( emu.cycles / 437 ) % 154;
-
+    // Execute a single instruction
     instr( emu.get_byte( emu.pc++ ) );
 
-    if ( emu.pc == emu.debug_break )
+    // Debug breakpoint
+    /*if ( emu.pc == 0xC086 ) {
       emu.halted = true;
+      send_debug_info( );
+    }*/
+
+    // HBlank
+    if ( emu.cycles >= 456 )
+    {
+      emu.lcd_ly++;
+      emu.cycles -= 456;
+    }
+
+    // VBlank
+    if ( emu.lcd_ly > 143 && emu.vblank )
+    {
+      send_debug_info( );
+      emu.build_vram( );
+      postMessage( {
+        'type': 'vsync',
+        'data': emu.vram
+      } );
+
+      emu.vblank = false;
+    }
+
+    if ( emu.lcd_ly > 153 )
+    {
+      emu.lcd_ly = 0;
+      emu.wait = true;
+      emu.vblank = true;
+    }
   }
 } ) ( this.emu = this.emu || { } );

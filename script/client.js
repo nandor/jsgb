@@ -77,12 +77,13 @@ $( function () {
         $( "#dbg-reg-f"  ).text( bin( msg.data.f,  8 ) );
         $( "#dbg-reg-b"  ).text( hex( msg.data.b,  2 ) );
         $( "#dbg-reg-c"  ).text( hex( msg.data.c,  2 ) );
-        $( "#dbg-reg-d"  ).text( hex( msg.data.b,  2 ) );
-        $( "#dbg-reg-e"  ).text( hex( msg.data.c,  2 ) );
+        $( "#dbg-reg-d"  ).text( hex( msg.data.d,  2 ) );
+        $( "#dbg-reg-e"  ).text( hex( msg.data.e,  2 ) );
         $( "#dbg-reg-h"  ).text( hex( msg.data.h,  2 ) );
         $( "#dbg-reg-l"  ).text( hex( msg.data.l,  2 ) );
         $( "#dbg-reg-sp" ).text( hex( msg.data.sp, 4 ) );
         $( "#dbg-reg-pc" ).text( hex( msg.data.pc, 4 ) );
+        $( "#dbg-reg-ly" ).text( hex( msg.data.ly, 2 ) );
         return;
       }
       case 'log':
@@ -105,7 +106,7 @@ $( function () {
     // Start the emulator
     worker.postMessage( {
       'type': 'start',
-      'data': '../10.gb'
+      'data': '../11.gb'
     } );
 
     running = true;

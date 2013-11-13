@@ -68,12 +68,13 @@ function send_debug_info( )
       'f': emu.f,
       'b': emu.b,
       'c': emu.c,
-      'b': emu.d,
-      'c': emu.e,
+      'd': emu.d,
+      'e': emu.e,
       'h': emu.h,
       'l': emu.l,
       'sp': emu.sp,
-      'pc': emu.pc
+      'pc': emu.pc,
+      'ly': emu.lcd_ly
     }
   } );
 }
@@ -84,34 +85,27 @@ function send_debug_info( )
  */
 function run( )
 {
-  var t0, t1;
+  var t0, t1, c0;
 
   t0 = ( new Date( ) ).getTime( );
 
   // Do stuff
+  c0 = emu.cycles;
+  emu.wait = false;
+
   do
   {
     emu.tick( );
-  } while ( emu.cycles < 67298 && !emu.halted );
-  emu.cycles = 0;
-
-  // 'vsync'
-  send_debug_info( );
-  emu.build_vram( );
-  postMessage( {
-    'type': 'vsync',
-    'data': emu.vram
-  } );
-
+  } while ( !emu.wait && !emu.halted );
 
   // Only run a new frame if we did not halt
   if ( !emu.halted )
   {
     // Wait to keep a steady framerate
-    do
-    {
-      t1 = ( new Date( ) ).getTime( );
-    } while ( t1 - t0 < 16 );
+    //do
+    //{
+    //  t1 = ( new Date( ) ).getTime( );
+    //} while ( t1 - t0 < 16 );
 
     setTimeout( run, 0 );
   }

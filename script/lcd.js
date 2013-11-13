@@ -6,22 +6,23 @@
 
 ( function( )
 {
-  emu.lcd_enable      = false;
-  emu.lcd_wnd_tilemap = 0x9800;
-  emu.lcd_wnd_display = false;
-  emu.lcd_tile_data   = 0x8800;
-  emu.lcd_bg_tilemap  = 0x9800;
-  emu.lcd_obj_size    = 0x08;
-  emu.lcd_obj_display = false;
-  emu.lcd_bg_display  = false;
-  emu.lcd_scx         = 0x00;
-  emu.lcd_scy         = 0x00;
-  emu.lcd_wy          = 0x00;
-  emu.lcd_wx          = 0x00;
-  emu.lcd_lx          = 0x00;
-  emu.lcd_ly          = 0x00;
-  emu.lcd_bg          = [ 0x0, 0x0, 0x0, 0x0 ];
-  emu.vram            = new Uint8Array( 160 * 144 * 4 );
+  emu.lcd_enable       = false;
+  emu.lcd_wnd_tilemap  = 0x9800;
+  emu.lcd_wnd_display  = false;
+  emu.lcd_tile_data    = 0x8800;
+  emu.lcd_bg_tilemap   = 0x9800;
+  emu.lcd_obj_size     = 0x08;
+  emu.lcd_obj_display  = false;
+  emu.lcd_bg_display   = false;
+  emu.lcd_scx          = 0x00;
+  emu.lcd_scy          = 0x00;
+  emu.lcd_wy           = 0x00;
+  emu.lcd_wx           = 0x00;
+  emu.lcd_lx           = 0x00;
+  emu.lcd_ly           = 0x00;
+  emu.lcd_bg           = [ 0x0, 0x0, 0x0, 0x0 ];
+  emu.lcd_vblank       = false;
+  emu.vram             = new Uint8Array( 160 * 144 * 4 );
 
   function get_tile_pixel( tile, l, c )
   {
