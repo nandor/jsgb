@@ -163,8 +163,11 @@ $( function () {
   /**
    * Sends a keyboard event to the worker
    */
-  function keyboard_event( key, state )
+  function keyboard_event( key, state, evt )
   {
+    evt.preventDefault( );
+    evt.stopPropagation( );
+
     worker.postMessage( {
       'type': 'key',
       'data': {
@@ -182,14 +185,14 @@ $( function () {
   {
     switch ( evt.keyCode )
     {
-      case 38: keyboard_event( 'up',     true ); break;
-      case 40: keyboard_event( 'down',   true ); break;
-      case 37: keyboard_event( 'left',   true ); break;
-      case 49: keyboard_event( 'right',  true ); break;
-      case 81: keyboard_event( 'start',  true ); break;
-      case 87: keyboard_event( 'select', true ); break;
-      case 65: keyboard_event( 'a',      true ); break;
-      case 66: keyboard_event( 'b',      true ); break;
+      case 38: keyboard_event( 'up',     true, evt ); break;
+      case 40: keyboard_event( 'down',   true, evt ); break;
+      case 37: keyboard_event( 'left',   true, evt ); break;
+      case 39: keyboard_event( 'right',  true, evt ); break;
+      case 81: keyboard_event( 'start',  true, evt ); break;
+      case 87: keyboard_event( 'select', true, evt ); break;
+      case 65: keyboard_event( 'a',      true, evt ); break;
+      case 66: keyboard_event( 'b',      true, evt ); break;
     }
   } );
 
@@ -201,14 +204,14 @@ $( function () {
   {
     switch ( evt.keyCode )
     {
-      case 38: keyboard_event( 'up',     false ); break;
-      case 40: keyboard_event( 'down',   false ); break;
-      case 37: keyboard_event( 'left',   false ); break;
-      case 49: keyboard_event( 'right',  false ); break;
-      case 81: keyboard_event( 'start',  false ); break;
-      case 87: keyboard_event( 'select', false ); break;
-      case 65: keyboard_event( 'a',      false ); break;
-      case 66: keyboard_event( 'b',      false ); break;
+      case 38: keyboard_event( 'up',     false, evt ); break;
+      case 40: keyboard_event( 'down',   false, evt ); break;
+      case 37: keyboard_event( 'left',   false, evt ); break;
+      case 39: keyboard_event( 'right',  false, evt ); break;
+      case 81: keyboard_event( 'start',  false, evt ); break;
+      case 87: keyboard_event( 'select', false, evt ); break;
+      case 65: keyboard_event( 'a',      false, evt ); break;
+      case 66: keyboard_event( 'b',      false, evt ); break;
     }
   } );
 

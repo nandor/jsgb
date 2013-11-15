@@ -7,8 +7,12 @@
 ( function ( emu )
 {
   // Internal memory
+  emu.cartridge_type   = 0x01;
   emu.ram              = new Uint8Array( 0x10000 );
   emu.nr               = new Uint8Array( 52 );
+  emu.rom_bank         = 0x01;
+  emu.rom_ram          = false;
+  emu.rom_banking      = true;
 
   // Keyboard
   emu.keys             = 0xFF;
@@ -67,6 +71,13 @@
   */
   emu.load_rom = function( rom )
   {
+    // Choose an appropiate cartridge controller
+    emu.cartridge_type = rom.cartridge_type;
+    if ( emu.cartridge_type == 0x00 ) {
+      emu.cartridge_type = 0x01;
+    }
+
+    // Load the first two banks
     for ( var i = 0; i < 0x8000; ++i )
     {
       emu.ram[ i ] = rom.data[ i ];
@@ -123,15 +134,13 @@
       // Video RAM
       case ( 0x8000 <= addr && addr < 0xA000 ):
       {
-        //console.log( "Read from video memory" );
-        return 0;
+        return emu.ram[ addr ];
       }
 
       // Switchable RAM bank
       case ( 0xA000 <= addr && addr < 0xC000 ):
       {
-        //console.log( "Read from switchable RAM" );
-        return 0;
+        return emu.ram[ addr ];
       }
 
       // Internal RAM & echo
@@ -143,8 +152,13 @@
       // Sprite attrib memory
       case ( 0xFE00 <= addr && addr < 0xFEA0 ):
       {
-        // console.log( "Read from Sprite attrib memory" );
-        return 0;
+        return emu.ram[ addr ];
+      }
+
+      // Possibly invalid addresses
+      case ( 0xFEA0 <= addr && addr < 0xFF00 ):
+      {
+        return emu.ram[ addr ];
       }
 
       // IO ports
@@ -183,6 +197,16 @@
         return;
       }
 
+      // MBC control
+      case ( 0x0100 <= addr && addr < 0x8000 ):
+      {
+        switch ( emu.cartridge_type )
+        {
+          case 0x01: emu.mbc1_reg( addr, val ); break;
+        }
+        return;
+      }
+
       // Video RAM
       case ( 0x8000 <= addr && addr < 0xA000 ):
       {
@@ -193,7 +217,7 @@
       // Switchable RAM bank
       case ( 0xA000 <= addr && addr < 0xC000 ):
       {
-        console.log( "Write to switchable RAM" );
+        emu.ram[ addr ] = val & 0xFF;
         return;
       }
 
@@ -218,7 +242,14 @@
       // Sprite attrib memory
       case ( 0xFE00 <= addr && addr < 0xFEA0 ):
       {
-        console.log( "Sprite attrib memory" );
+        emu.ram[ addr ] = val & 0xFF;
+        return;
+      }
+
+      // Possibly invalid addresses
+      case ( 0xFEA0 <= addr && addr < 0xFF00 ):
+      {
+        emu.ram[ addr ] = val & 0xFF;
         return;
       }
 
@@ -261,16 +292,17 @@
           emu.keys = 0x2F;
           emu.keys &= emu.key_start  ? 0x07 : 0xFF;
           emu.keys &= emu.key_select ? 0x0B : 0xFF;
-          emu.keys &= emu.key_a      ? 0x0C : 0xFF;
-          emu.keys &= emu.key_b      ? 0x0E : 0xFF;
+          emu.keys &= emu.key_b      ? 0x0D : 0xFF;
+          emu.keys &= emu.key_a      ? 0x0E : 0xFF;
           return;
         }
 
         if ( !( val & 0x10 ) ) {
           emu.keys = 0x1F;
+
           emu.keys &= emu.key_down  ? 0x07 : 0xFF;
           emu.keys &= emu.key_up    ? 0x0B : 0xFF;
-          emu.keys &= emu.key_left  ? 0x0C : 0xFF;
+          emu.keys &= emu.key_left  ? 0x0D : 0xFF;
           emu.keys &= emu.key_right ? 0x0E : 0xFF;
           return;
         }
@@ -339,25 +371,27 @@
 
       // OBP0
       case ( addr == 0xFF48 ):
+        emu.lcd_obp0[ 0 ] = ( val & 0x03 ) >> 0;
+        emu.lcd_obp0[ 1 ] = ( val & 0x0C ) >> 2;
+        emu.lcd_obp0[ 2 ] = ( val & 0x30 ) >> 4;
+        emu.lcd_obp0[ 3 ] = ( val & 0xC0 ) >> 6;
         return;
 
       // OBP1
       case ( addr == 0xFF49 ):
+        emu.lcd_obp1[ 0 ] = ( val & 0x03 ) >> 0;
+        emu.lcd_obp1[ 1 ] = ( val & 0x0C ) >> 2;
+        emu.lcd_obp1[ 2 ] = ( val & 0x30 ) >> 4;
+        emu.lcd_obp1[ 3 ] = ( val & 0xC0 ) >> 6;
         return;
 
       // WY
       case ( addr == 0xFF4A ):
-        if ( val < 0 || 143 < val )
-          throw "WY out of range: " + val.toString( 16 );
-
         emu.lcd_wy = val & 0xFF;
         return;
 
       // WX
       case ( addr == 0xFF4B ):
-        if ( val < 0 || 166 < val )
-          throw "WX out of range: " + val.toString( 16 );
-
         emu.lcd_wx = val & 0xFF;
         return;
 
@@ -452,10 +486,18 @@
 
       // OBP0
       case ( addr == 0xFF48 ):
+        ret |= emu.lcd_obp0[ 0 ] << 0;
+        ret |= emu.lcd_obp0[ 1 ] << 2;
+        ret |= emu.lcd_obp0[ 2 ] << 4;
+        ret |= emu.lcd_obp0[ 3 ] << 6;
         return;
 
       // OBP1
       case ( addr == 0xFF49 ):
+        ret |= emu.lcd_obp1[ 0 ] << 0;
+        ret |= emu.lcd_obp1[ 1 ] << 2;
+        ret |= emu.lcd_obp1[ 2 ] << 4;
+        ret |= emu.lcd_obp1[ 3 ] << 6;
         return;
 
       // WY
@@ -476,4 +518,38 @@
         return ret;
     }
   };
+
+  /**
+   * ROM registers
+   */
+  emu.mbc1_reg = function( addr, val )
+  {
+    var tmp;
+
+    switch ( true )
+    {
+      case ( 0x0000 <= addr && addr < 0x2000 ):
+      {
+        emu.rom_ram = val == 0x0A;
+        return;
+      }
+      case ( 0x2000 <= addr && addr < 0x4000 ):
+      {
+        tmp = val & 0x1E;
+        tmp = tmp ? tmp : 0x01;
+        emu.rom_bank = ( emu.rom_bank & 0xE0 ) | tmp;
+
+        for ( var idx = 0x4000; idx < 0x8000; ++idx )
+        {
+          emu.ram[ idx ] = emu.rom.data[ emu.rom_bank * 0x4000 + idx ];
+        }
+
+        return;
+      }
+      default:
+      {
+        log( "MBC1: " + addr.toString( 16 ) + " " + val.toString( 16 ) );
+      }
+    }
+  }
 } ) ( this.emu = this.emu || { } );

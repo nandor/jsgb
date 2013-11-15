@@ -127,7 +127,6 @@
     } );
   }.bind( emu );
 
-
   accessReg16( 'pc' );
   accessReg16( 'sp' );
   accessReg8( 'af' );
@@ -699,7 +698,6 @@
       // HALT
       case ( op == 0x76 ):
         emu.cycles += 4;
-        emu.pc += 1;
         emu.halted = true;
         return;
 
@@ -1061,29 +1059,38 @@
     */
   emu.tick = function( )
   {
-    // Debug breakpoint
-    if ( emu.pc == emu.debug_break ) {
-      emu.stopped = true;
-      send_debug_info( );
-    }
-
     if ( emu.stopped )
     {
       return;
     }
 
-    // Do interrupts
-    if ( emu.ime )
+    // VBlank interrupt
+    if ( emu.ifVBlank )
     {
-      if ( emu.ieVBlank && emu.ifVBlank )
-      {
-        emu.ifVBlank = false;
-        emu.halted = false;
-        emu.cycles += 20;
+      emu.halted = false;
+      emu.ifVBlank = false;
 
+      if ( emu.ime && emu.ieVBlank )
+      {
+        emu.cycles += 20;
         emu.sp = ( emu.sp - 2 ) & 0xFFFF;
         emu.set_word( emu.sp, emu.pc );
         emu.pc = 0x0040;
+      }
+    }
+
+    // Pin interrupt
+    if ( emu.ifPins )
+    {
+      emu.halted = false;
+      emu.ifPins = false;
+
+      if ( emu.ime && emu.iePins )
+      {
+        emu.cycles += 20;
+        emu.sp = ( emu.sp - 2 ) & 0xFFFF;
+        emu.set_word( emu.sp, emu.pc );
+        emu.pc = 0x0060;
       }
     }
 
@@ -1095,6 +1102,12 @@
     else
     {
       instr( emu.get_byte( emu.pc++ ) );
+    }
+
+    // Debug breakpoint
+    if ( emu.pc == emu.debug_break ) {
+      emu.stopped = true;
+      send_debug_info( );
     }
 
     // HBlank
@@ -1109,10 +1122,7 @@
     {
       send_debug_info( );
       emu.build_vram( );
-      postMessage( {
-        'type': 'vsync',
-        'data': emu.vram
-      } );
+      postMessage( { 'type': 'vsync', 'data': emu.vram } );
 
       emu.ifVBlank = true;
       emu.vblank = false;

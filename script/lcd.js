@@ -21,9 +21,16 @@
   emu.lcd_lx           = 0x00;
   emu.lcd_ly           = 0x00;
   emu.lcd_bg           = [ 0x0, 0x0, 0x0, 0x0 ];
+  emu.lcd_obp0         = [ 0x0, 0x0, 0x0, 0x0 ];
+  emu.lcd_obp1         = [ 0x0, 0x0, 0x0, 0x0 ];
   emu.lcd_vblank       = false;
   emu.vram             = new Uint8Array( 160 * 144 * 4 );
 
+
+  /**
+   * Returns a pixel from a tile in the tile data
+   * table
+   */
   function get_tile_pixel( tile, l, c )
   {
     var b0, b1, idx, pix;
@@ -47,9 +54,26 @@
 
   function build_background( vidx, y, x )
   {
-    var l, c, tile, pix;
+    var tile, pix;
 
     tile = emu.ram[ emu.lcd_bg_tilemap + ( y >> 3 ) * 32 + ( x >> 3 ) ];
+    if ( emu.lcd_tile_data == 0x8800 && ( tile & 0x80 ) ) {
+      tile |= ~0xFF;
+    }
+
+    pix = get_tile_pixel( tile, y & 7, 7 - ( x & 7 ) );
+
+    emu.vram[ vidx + 0 ] = pix;
+    emu.vram[ vidx + 1 ] = pix;
+    emu.vram[ vidx + 2 ] = pix;
+    emu.vram[ vidx + 3 ] = 0xFF;
+  }
+
+  function build_window( vidx, y, x )
+  {
+    var tile, pix;
+
+    tile = emu.ram[ emu.lcd_wnd_tilemap + ( y >> 3 ) * 32 + ( x >> 3 ) ];
     if ( emu.lcd_tile_data == 0x8800 && ( tile & 0x80 ) ) {
       tile |= ~0xFF;
     }
@@ -75,17 +99,61 @@
     if ( emu.lcd_bg_display )
     {
       var vidx = -4;
-      for ( var yy = emu.lcd_scy; yy < emu.lcd_scy + 144; yy++ )
+      for ( var y = emu.lcd_scy; y < emu.lcd_scy + 144; ++y )
       {
-        for ( var xx = emu.lcd_scx; xx < emu.lcd_scx + 160; xx++ )
+        for ( var x = emu.lcd_scx; x < emu.lcd_scx + 160; ++x )
         {
-          build_background( vidx += 4, yy & 0xFF, xx & 0xFF );
+          build_background( vidx += 4, y & 0xFF, x & 0xFF );
+        }
+      }
+
+      if ( emu.lcd_wnd_display )
+      {
+        var xx, yy;
+        for ( var y = emu.lcd_wy; y < 144; ++y )
+        {
+          for ( var x = Math.max( 0, emu.lcd_wx - 7 ); x < 160; ++ x )
+          {
+            xx = x - emu.lcd_wx + 7;
+            yy = y - emu.lcd_wy;
+            build_window( ( y * 160 + x ) << 2, yy, xx );
+          }
+        }
+      }
+    }
+
+    if ( emu.lcd_obj_display )
+    {
+      var x0, y0, xx, yy, p, f, vidx;
+
+      for ( var i = 0; i < 40; ++i )
+      {
+        x0 = emu.ram[ 0xFE00 + ( i << 2 ) + 0 ];
+        y0 = emu.ram[ 0xFE00 + ( i << 2 ) + 0 ];
+        p = emu.ram[ 0xFE00 + ( i << 2 ) + 0 ];
+        f = emu.ram[ 0xFE00 + ( i << 2 ) + 0 ];
+
+        for ( var y = y0; y < Math.min( y0 + 8, 144 ); ++y )
+        {
+          for (var x = x0; x < Math.min( x0 + 8, 160 ); ++x )
+          {
+            xx = x - x0;
+            yy = y - y0;
+            vidx = ( y * 160 + x ) << 2;
+
+            pix = get_tile_pixel( p, yy & 7, 7 - ( xx & 7 ) );
+
+            emu.vram[ vidx + 0 ] = pix;
+            emu.vram[ vidx + 1 ] = pix;
+            emu.vram[ vidx + 2 ] = pix;
+            emu.vram[ vidx + 3 ] = 0xFF;
+          }
         }
       }
     }
   }
 
-  emu.debug_build_tile_data = function( )
+  emu.debug_build_vram = function( )
   {
     var idx, pix;
 

@@ -136,7 +136,7 @@ onmessage = function( e )
       }
       else
       {
-        emu.halted = false;
+        emu.stopped = false;
         run( );
       }
 
@@ -144,8 +144,10 @@ onmessage = function( e )
     }
     case 'step':
     {
-      emu.halted = false;
+      emu.stopped = false;
       emu.tick( );
+      emu.debug_build_vram( );
+      postMessage( { 'type': 'vsync', 'data': emu.vram } );
       send_debug_info( );
       return;
     }
@@ -162,6 +164,8 @@ onmessage = function( e )
         case 'start':  emu.key_start  = e.data.data.state; break;
         case 'select': emu.key_select = e.data.data.state; break;
       }
+
+      emu.ifPins |= e.data.data.state;
       return;
     }
     case 'break':
