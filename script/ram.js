@@ -7,7 +7,21 @@
 ( function ( emu )
 {
   // Internal memory
-  emu.ram = new Uint8Array( 0x10000 );
+  emu.ram              = new Uint8Array( 0x10000 );
+  emu.nr               = new Uint8Array( 52 );
+
+  // Keyboard
+  emu.keys             = 0xFF;
+  emu.key_start        = false;
+  emu.key_select       = false;
+  emu.key_a            = false;
+  emu.key_b            = false;
+  emu.key_left         = false;
+  emu.key_right        = false;
+  emu.key_up           = false;
+  emu.key_down         = false;
+
+  // DMA
   emu.boot_rom_enabled = true;
 
   // Bootstrap rom, source:
@@ -53,7 +67,7 @@
   */
   emu.load_rom = function( rom )
   {
-    for ( var i = 0; i <= 0xFFFF; ++i )
+    for ( var i = 0; i < 0x8000; ++i )
     {
       emu.ram[ i ] = rom.data[ i ];
     }
@@ -88,7 +102,8 @@
    */
   emu.get_byte = function( addr )
   {
-    switch ( true ) {
+    switch ( true )
+    {
       case ( 0x0000 <= addr && addr < 0x0100 ):
       {
         if ( emu.boot_rom_enabled )
@@ -138,7 +153,7 @@
         return emu.io_read( addr );
       }
 
-      // Hight RAM area
+      // High RAM area
       case ( 0xFF80 <= addr && addr < 0xFFFF ):
       {
         return emu.ram[ addr ];
@@ -147,8 +162,7 @@
       // Enable interrupts register
       case ( addr == 0xFFFF ):
       {
-        //console.log( "Read enable interrupts" );
-        return 0;
+        return emu.io_read( addr );
       }
     }
 
@@ -161,6 +175,7 @@
   emu.set_byte = function( addr, val )
   {
     switch ( true ) {
+
       // Restart and interrupt vectors
       case ( 0x0000 <= addr && addr < 0x0100 ):
       {
@@ -186,8 +201,8 @@
       case ( 0xC000 <= addr && addr < 0xE000 ):
       {
         emu.ram[ addr ] = val & 0xFF;
-        if ( addr + 0x4000 < 0xFE00 ) {
-          emu.ram[ addr + 0x4000 ] = val & 0xFF;
+        if ( addr < 0xDE00 ) {
+          emu.ram[ addr + 0x2000 ] = val & 0xFF;
         }
         return;
       }
@@ -196,7 +211,7 @@
       case ( 0xE000 <= addr && addr < 0xFE00 ):
       {
         emu.ram[ addr ] = val & 0xFF;
-        emu.ram[ addr - 0x4000 ] = val & 0xFF;
+        emu.ram[ addr - 0x2000 ] = val & 0xFF;
         return;
       }
 
@@ -224,7 +239,7 @@
       // Enable interrupts register
       case ( addr == 0xFFFF ):
       {
-        // console.log( "Write enable interrupts: " + val.toString( 16 ) );
+        emu.io_write( addr, val );
         return;
       }
     }
@@ -238,10 +253,46 @@
    */
   emu.io_write = function( addr, val )
   {
-    switch ( addr )
+    switch ( true )
     {
+      // P1
+      case ( 0xFF00 == addr ):
+        if ( !( val & 0x20 ) ) {
+          emu.keys = 0x2F;
+          emu.keys &= emu.key_start  ? 0x07 : 0xFF;
+          emu.keys &= emu.key_select ? 0x0B : 0xFF;
+          emu.keys &= emu.key_a      ? 0x0C : 0xFF;
+          emu.keys &= emu.key_b      ? 0x0E : 0xFF;
+          return;
+        }
+
+        if ( !( val & 0x10 ) ) {
+          emu.keys = 0x1F;
+          emu.keys &= emu.key_down  ? 0x07 : 0xFF;
+          emu.keys &= emu.key_up    ? 0x0B : 0xFF;
+          emu.keys &= emu.key_left  ? 0x0C : 0xFF;
+          emu.keys &= emu.key_right ? 0x0E : 0xFF;
+          return;
+        }
+
+        return;
+
+      // NR x
+      case ( 0xFF10 <= addr && addr <= 0xFF26 ):
+        emu.nr[ addr - 0xFF00 ] = val & 0xFF;
+        return;
+
+      // IF
+      case ( addr == 0xFF0F ):
+        emu.ifPins   = ( val & 0x10 ) != 0x00;
+        emu.ifSerial = ( val & 0x08 ) != 0x00;
+        emu.ifTimer  = ( val & 0x04 ) != 0x00;
+        emu.ifLCDC   = ( val & 0x02 ) != 0x00;
+        emu.ifVBlank = ( val & 0x01 ) != 0x00;
+        return;
+
       // LCDC
-      case 0xFF40:
+      case ( addr == 0xFF40 ):
         emu.lcd_enable      = val & 0x80 ? true : false;
         emu.lcd_wnd_tilemap = val & 0x40 ? 0x9C00 : 0x9800;
         emu.lcd_wnd_display = val & 0x20 ? true : false;
@@ -253,33 +304,33 @@
         return;
 
       // STAT
-      case 0xFF41:
+      case ( addr == 0xFF41 ):
         return;
 
       // SCY
-      case 0xFF42:
+      case ( addr == 0xFF42 ):
         emu.lcd_scy = val & 0xFF;
         return;
 
       // SCX
-      case 0xFF43:
+      case ( addr == 0xFF43 ):
         emu.lcd_scx = val & 0xFF;
         return;
 
       // LY
-      case 0xFF44:
+      case ( addr == 0xFF44 ):
         throw "IO register LY is read only";
 
       // LYC
-      case 0xFF45:
+      case ( addr == 0xFF45 ):
         return;
 
       // DMA
-      case 0xFF46:
+      case ( addr == 0xFF46 ):
         return;
 
       // BGP
-      case 0xFF47:
+      case ( addr == 0xFF47 ):
         emu.lcd_bg[ 0 ] = ( val & 0x03 ) >> 0;
         emu.lcd_bg[ 1 ] = ( val & 0x0C ) >> 2;
         emu.lcd_bg[ 2 ] = ( val & 0x30 ) >> 4;
@@ -287,15 +338,15 @@
         return;
 
       // OBP0
-      case 0xFF48:
+      case ( addr == 0xFF48 ):
         return;
 
       // OBP1
-      case 0xFF49:
+      case ( addr == 0xFF49 ):
         return;
 
       // WY
-      case 0xFF4A:
+      case ( addr == 0xFF4A ):
         if ( val < 0 || 143 < val )
           throw "WY out of range: " + val.toString( 16 );
 
@@ -303,7 +354,7 @@
         return;
 
       // WX
-      case 0xFF4B:
+      case ( addr == 0xFF4B ):
         if ( val < 0 || 166 < val )
           throw "WX out of range: " + val.toString( 16 );
 
@@ -311,9 +362,19 @@
         return;
 
       // DMG ROM enable
-      case 0xFF50:
-        emu.lcd_ly = 0x90;
-        emu.boot_rom_enabled = ( val & 0x01 ) != 0x00;
+      case ( addr == 0xFF50 ):
+        emu.lcd_ly      = 0x90;
+        emu.nr[ 0x26 ]  = 0xF1;
+        emu.boot_rom_enabled = false;
+        return;
+
+      // IE
+      case ( addr == 0xFFFF ):
+        emu.iePins   = ( val & 0x10 ) != 0x00;
+        emu.ieSerial = ( val & 0x08 ) != 0x00;
+        emu.ieTimer  = ( val & 0x04 ) != 0x00;
+        emu.ieLCDC   = ( val & 0x02 ) != 0x00;
+        emu.ieVBlank = ( val & 0x01 ) != 0x00;
         return;
     }
   };
@@ -326,10 +387,27 @@
   {
     var ret;
 
-    switch ( addr )
+    switch ( true )
     {
+      // P1
+      case ( addr == 0xFF00 ):
+        return emu.keys;
+
+      // NR x
+      case ( 0xFF10 <= addr && addr <= 0xFF26 ):
+        return emu.nr[ addr - 0xFF00 ];
+
+      // IF
+      case ( addr == 0xFF0F ):
+        ret |= emu.ifPins   ? 0x10 : 0x00;
+        ret |= emu.ifSerial ? 0x08 : 0x00;
+        ret |= emu.ifTimer  ? 0x04 : 0x00;
+        ret |= emu.ifLCDC   ? 0x02 : 0x00;
+        ret |= emu.ifVBlank ? 0x01 : 0x00;
+        return ret;
+
       // LCDC
-      case 0xFF40:
+      case ( addr == 0xFF40 ):
         ret |= emu.lcd_enable                ? 0x80 : 0x00;
         ret |= emu.lcd_wnd_tilemap == 0x9C00 ? 0x40 : 0x00;
         ret |= emu.lcd_wnd_display           ? 0x20 : 0x00;
@@ -341,52 +419,61 @@
         return ret;
 
       // STAT
-      case 0xFF41:
+      case ( addr == 0xFF41 ):
         return;
 
       // SCY
-      case 0xFF42:
+      case ( addr == 0xFF42 ):
         return emu.lcd_scy;
 
       // SCX
-      case 0xFF43:
+      case ( addr == 0xFF43 ):
         return emu.lcd_scx;
 
       // LY
-      case 0xFF44:
+      case ( addr == 0xFF44 ):
         return emu.lcd_ly;
 
       // LYC
-      case 0xFF45:
+      case ( addr == 0xFF45 ):
         return;
 
       // DMA
-      case 0xFF46:
+      case ( addr == 0xFF46 ):
         return;
 
       // BGP
-      case 0xFF47:
+      case ( addr == 0xFF47 ):
         ret |= emu.lcd_bg[ 0 ] << 0;
         ret |= emu.lcd_bg[ 1 ] << 2;
         ret |= emu.lcd_bg[ 2 ] << 4;
         ret |= emu.lcd_bg[ 3 ] << 6;
-        return;
+        return ret;
 
       // OBP0
-      case 0xFF48:
+      case ( addr == 0xFF48 ):
         return;
 
       // OBP1
-      case 0xFF49:
+      case ( addr == 0xFF49 ):
         return;
 
       // WY
-      case 0xFF4A:
+      case ( addr == 0xFF4A ):
         return emu.lcd_wy;
 
       // WX
-      case 0xFF4B:
+      case ( addr == 0xFF4B ):
         return emu.lcd_wx;
+
+      // IE
+      case ( addr == 0xFFFF ):
+        ret |= emu.iePins   ? 0x10 : 0x00;
+        ret |= emu.ieSerial ? 0x08 : 0x00;
+        ret |= emu.ieTimer  ? 0x04 : 0x00;
+        ret |= emu.ieLCDC   ? 0x02 : 0x00;
+        ret |= emu.ieVBlank ? 0x01 : 0x00;
+        return ret;
     }
   };
 } ) ( this.emu = this.emu || { } );

@@ -94,6 +94,17 @@ $( function () {
     }
   }
 
+  /**
+   * Updates the breakpoint
+   */
+  $( document ).on( 'change', "#dbg-break", function( )
+  {
+    worker.postMessage( {
+      'type': 'break',
+      'data': parseInt( $( this ).val( ), 16 )
+    } );
+  } );
+
 
   /**
    * Starts the emulator
@@ -106,7 +117,7 @@ $( function () {
     // Start the emulator
     worker.postMessage( {
       'type': 'start',
-      'data': '../11.gb'
+      'data': '../test.gb'
     } );
 
     running = true;
@@ -146,6 +157,59 @@ $( function () {
     } );
 
     running = false;
+  } );
+
+
+  /**
+   * Sends a keyboard event to the worker
+   */
+  function keyboard_event( key, state )
+  {
+    worker.postMessage( {
+      'type': 'key',
+      'data': {
+        'key': key,
+        'state': state
+      }
+    } );
+  }
+
+
+  /**
+   * Handles keyboard input ( key press )
+   */
+  $( document ).on( 'keydown', function( evt )
+  {
+    switch ( evt.keyCode )
+    {
+      case 38: keyboard_event( 'up',     true ); break;
+      case 40: keyboard_event( 'down',   true ); break;
+      case 37: keyboard_event( 'left',   true ); break;
+      case 49: keyboard_event( 'right',  true ); break;
+      case 81: keyboard_event( 'start',  true ); break;
+      case 87: keyboard_event( 'select', true ); break;
+      case 65: keyboard_event( 'a',      true ); break;
+      case 66: keyboard_event( 'b',      true ); break;
+    }
+  } );
+
+
+  /**
+   * Handles keyboard input ( key release )
+   */
+  $( document ).on( 'keyup', function( evt )
+  {
+    switch ( evt.keyCode )
+    {
+      case 38: keyboard_event( 'up',     false ); break;
+      case 40: keyboard_event( 'down',   false ); break;
+      case 37: keyboard_event( 'left',   false ); break;
+      case 49: keyboard_event( 'right',  false ); break;
+      case 81: keyboard_event( 'start',  false ); break;
+      case 87: keyboard_event( 'select', false ); break;
+      case 65: keyboard_event( 'a',      false ); break;
+      case 66: keyboard_event( 'b',      false ); break;
+    }
   } );
 
 

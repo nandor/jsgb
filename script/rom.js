@@ -20,13 +20,13 @@ var ROM = function( data )
   this.new_licensee_code = "XX";
   this.sgb               = this.data[ 0x0146 ];
   this.cartridge_type    = this.data[ 0x0147 ];
-  this.data_size          = 0;
+  this.data_size         = 0;
   this.ram_size          = 0;
   this.dest_code         = this.data[ 0x014A ];
   this.old_licensee_code = this.data[ 0x014B ];
   this.version_number    = this.data[ 0x014C ];
   this.header_sum        = this.data[ 0x014D ];
-  this.data_sum           = this.data[ 0x014F ] | (this.data[ 0x014E ] << 8);
+  this.data_sum          = this.data[ 0x014F ] | (this.data[ 0x014E ] << 8);
 
   this.read_title( );
   this.read_manuf_code( );
@@ -60,7 +60,7 @@ ROM.prototype.check_data = function( )
   }
 
   if ( (sum & 0xFFFF) != this.data_sum ) {
-    //throw "Header checksum mismatch 0x" + ( sum & 0xFFFF).toString( 16 );
+    log( "ROM checksum mismatch 0x" + ( sum & 0xFFFF).toString( 16 ) );
   }
 }
 
@@ -105,10 +105,6 @@ ROM.prototype.read_data_size = function( )
     case 0x54: this.data_size =  96 << 15; break;
     default:
       throw "Invalid ROM size: 0x" + this.data[ 0x0148 ].toString( 16 );
-  }
-
-  if ( this.data.length != this.data_size ) {
-    throw "ROM size mismatch";
   }
 }
 

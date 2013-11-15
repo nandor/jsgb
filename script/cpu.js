@@ -6,16 +6,31 @@
 
 ( function ( emu )
 {
-  emu.cycles = 0;
-  emu.halted = false;
-  emu.vblank = false;
+  // State
+  emu.cycles  = 0;
+  emu.halted  = false;
+  emu.stopped = false;
+  emu.vblank  = false;
+
+  // Debug
+  emu.debug_break = 0xFFFF;
 
   // Interrupt enable register
+  emu.ime      = false;
+
+  // Interrupt enable
   emu.iePins   = false;
   emu.ieSerial = false;
   emu.ieTimer  = false;
   emu.ieLCDC   = false;
-  emu.ieStat   = false;
+  emu.ieVBlank = false;
+
+  // Interrupt flags
+  emu.ifPins   = false;
+  emu.ifSerial = false;
+  emu.ifTimer  = false;
+  emu.ifLCDC   = false;
+  emu.ifVBlank = false;
 
   // Registers
   var reg = {
@@ -389,9 +404,7 @@
         emu.cf = ( r & 0x80 ) != 0x00;
         emu.nf = false;
         emu.hf = false;
-
         r = ( ( r << 1 ) | c ) & 0xFF;
-
         emu.zf = r == 0x00;
 
         set_r( z, r );
@@ -405,9 +418,7 @@
         emu.cf = ( r & 0x01 ) != 0x00;
         emu.nf = false;
         emu.hf = false;
-
         r = ( ( r >> 1 ) | c ) & 0xFF;
-
         emu.zf = r == 0x00;
 
         set_r( z, r );
@@ -420,9 +431,7 @@
         emu.cf = ( r & 0x80 ) != 0x00;
         emu.nf = false;
         emu.hf = false;
-
         r = ( r << 1 ) & 0xFF;
-
         emu.zf = r == 0x00;
 
         set_r( z, r );
@@ -435,9 +444,7 @@
         emu.cf = ( r & 0x1 ) != 0x00;
         emu.nf = false;
         emu.hf = false;
-
         r = ( ( r >> 1 ) | ( r & 0x80 ) ) & 0xFF;
-
         emu.zf = r == 0x00;
 
         set_r( z, r );
@@ -451,9 +458,7 @@
         emu.cf = false;
         emu.nf = false;
         emu.hf = false;
-
         r = ( ( r & 0x0F ) << 4 ) | ( ( r & 0xF0 ) >> 4 );
-
         set_r( z, r );
         return;
 
@@ -464,9 +469,7 @@
         emu.cf = ( r & 0x01 ) != 0x00;
         emu.nf = false;
         emu.hf = false;
-
         r = ( r >> 1 ) & 0xFF;
-
         emu.zf = r == 0x00;
 
         set_r( z, r );
@@ -551,7 +554,7 @@
       case ( op == 0x10 ):
         emu.cycles += 4;
         emu.pc += 1;
-//        console.log( "Unimplemented: STOP" );
+        emu.stopped = true;
         return;
 
       // LD (de), a
@@ -801,7 +804,9 @@
       // RETI
       case ( op == 0xD9 ):
         emu.cycles += 8;
-        console.log( "Not implemented: RETI" );
+        emu.pc = emu.get_word( emu.sp );
+        emu.sp = ( emu.sp + 2 ) & 0xFFFF;
+        emu.ime = true;
         return;
 
       // LDH a, (n)
@@ -820,6 +825,7 @@
       // DI
       case ( op == 0xF3 ):
         emu.cycles += 4;
+        emu.ime = false;
         return;
 
       // LDHL sp, n
@@ -847,7 +853,7 @@
       // EI
       case ( op == 0xFB ):
         emu.cycles += 4;
-        console.log( "Not implemented: EI" );
+        emu.ime = true;
         return;
 
       // LD a, (nn)
@@ -882,12 +888,11 @@
         emu.cycles += y == 0x6 ? 12 : 4;
         r = get_r( y );
 
-        c = ( ( ( r >>> 0 ) & 0x0F ) + 0x01 ) & 0x1F;
         r = ( r + 1 ) & 0xFF;
 
         emu.zf = r == 0x00;
         emu.nf = false;
-        emu.hf = ( c & 0x10 ) != 0x00;
+        emu.hf = ( r & 0x0F ) == 0x00;
 
         set_r( y, r );
         return;
@@ -897,12 +902,11 @@
         emu.cycles += y == 0x6 ? 12 : 4;
         r = get_r( y );
 
-        c = ( ( ( r >>> 0 ) & 0x0F ) + 0x0F ) & 0x1F;
         r = ( r - 1 ) & 0xFF;
 
         emu.zf = r == 0x00;
         emu.nf = true;
-        emu.hf = ( c & 0x10 ) == 0x00;
+        emu.hf = ( r & 0x0F ) == 0x0F;
 
         set_r( y, r );
         return;
@@ -1057,19 +1061,41 @@
     */
   emu.tick = function( )
   {
-    if ( emu.halted )
+    // Debug breakpoint
+    if ( emu.pc == emu.debug_break ) {
+      emu.stopped = true;
+      send_debug_info( );
+    }
+
+    if ( emu.stopped )
     {
       return;
     }
 
-    // Execute a single instruction
-    instr( emu.get_byte( emu.pc++ ) );
+    // Do interrupts
+    if ( emu.ime )
+    {
+      if ( emu.ieVBlank && emu.ifVBlank )
+      {
+        emu.ifVBlank = false;
+        emu.halted = false;
+        emu.cycles += 20;
 
-    // Debug breakpoint
-    /*if ( emu.pc == 0xC086 ) {
-      emu.halted = true;
-      send_debug_info( );
-    }*/
+        emu.sp = ( emu.sp - 2 ) & 0xFFFF;
+        emu.set_word( emu.sp, emu.pc );
+        emu.pc = 0x0040;
+      }
+    }
+
+    // Run an instruction
+    if ( emu.halted )
+    {
+      emu.cycles += 4;
+    }
+    else
+    {
+      instr( emu.get_byte( emu.pc++ ) );
+    }
 
     // HBlank
     if ( emu.cycles >= 456 )
@@ -1088,6 +1114,7 @@
         'data': emu.vram
       } );
 
+      emu.ifVBlank = true;
       emu.vblank = false;
     }
 

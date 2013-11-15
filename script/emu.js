@@ -10,7 +10,6 @@ importScripts( '../script/cpu.js'
              , '../script/lcd.js'
              );
 
-
 /**
  * Prevents the ROM from being reloaded
  * when we resume the emulator
@@ -81,7 +80,7 @@ function send_debug_info( )
 
 
 /**
- * Runs until halted
+ * Runs until stopped
  */
 function run( )
 {
@@ -96,10 +95,10 @@ function run( )
   do
   {
     emu.tick( );
-  } while ( !emu.wait && !emu.halted );
+  } while ( !emu.wait && !emu.stopped );
 
-  // Only run a new frame if we did not halt
-  if ( !emu.halted )
+  // Only run a new frame if we did not stop
+  if ( !emu.stopped )
   {
     // Wait to keep a steady framerate
     //do
@@ -148,6 +147,26 @@ onmessage = function( e )
       emu.halted = false;
       emu.tick( );
       send_debug_info( );
+      return;
+    }
+    case 'key':
+    {
+      switch ( e.data.data.key )
+      {
+        case 'up':     emu.key_up     = e.data.data.state; break;
+        case 'down':   emu.key_down   = e.data.data.state; break;
+        case 'left':   emu.key_left   = e.data.data.state; break;
+        case 'right':  emu.key_right  = e.data.data.state; break;
+        case 'a':      emu.key_a      = e.data.data.state; break;
+        case 'b':      emu.key_b      = e.data.data.state; break;
+        case 'start':  emu.key_start  = e.data.data.state; break;
+        case 'select': emu.key_select = e.data.data.state; break;
+      }
+      return;
+    }
+    case 'break':
+    {
+      emu.debug_break = e.data.data;
       return;
     }
     case 'stop':
