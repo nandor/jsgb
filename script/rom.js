@@ -20,7 +20,7 @@ var ROM = function( data )
   this.new_licensee_code = "XX";
   this.sgb               = this.data[ 0x0146 ];
   this.cartridge_type    = this.data[ 0x0147 ];
-  this.data_size         = 0;
+  this.rom_size         = 0;
   this.ram_size          = 0;
   this.dest_code         = this.data[ 0x014A ];
   this.old_licensee_code = this.data[ 0x014B ];
@@ -31,7 +31,7 @@ var ROM = function( data )
   this.read_title( );
   this.read_manuf_code( );
   this.read_new_licensee_code( );
-  this.read_data_size( );
+  this.read_rom_size( );
   this.read_ram_size( );
 
   this.check_header( );
@@ -89,20 +89,20 @@ ROM.prototype.read_new_licensee_code = function( )
   );
 }
 
-ROM.prototype.read_data_size = function( )
+ROM.prototype.read_rom_size = function( )
 {
   switch ( this.data[ 0x0148 ] ) {
-    case 0x00: this.data_size =  32 << 10; break;
-    case 0x01: this.data_size =  64 << 10; break;
-    case 0x02: this.data_size = 128 << 10; break;
-    case 0x03: this.data_size = 256 << 10; break;
-    case 0x04: this.data_size = 512 << 10; break;
-    case 0x05: this.data_size =   1 << 20; break;
-    case 0x06: this.data_size =   2 << 20; break;
-    case 0x07: this.data_size =   4 << 20; break;
-    case 0x52: this.data_size =  72 << 15; break;
-    case 0x53: this.data_size =  80 << 15; break;
-    case 0x54: this.data_size =  96 << 15; break;
+    case 0x00: this.rom_size =  32 << 10; break;
+    case 0x01: this.rom_size =  64 << 10; break;
+    case 0x02: this.rom_size = 128 << 10; break;
+    case 0x03: this.rom_size = 256 << 10; break;
+    case 0x04: this.rom_size = 512 << 10; break;
+    case 0x05: this.rom_size =   1 << 20; break;
+    case 0x06: this.rom_size =   2 << 20; break;
+    case 0x07: this.rom_size =   4 << 20; break;
+    case 0x52: this.rom_size =  72 << 15; break;
+    case 0x53: this.rom_size =  80 << 15; break;
+    case 0x54: this.rom_size =  96 << 15; break;
     default:
       throw "Invalid ROM size: 0x" + this.data[ 0x0148 ].toString( 16 );
   }

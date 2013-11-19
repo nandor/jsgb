@@ -117,7 +117,7 @@ $( function () {
     // Start the emulator
     worker.postMessage( {
       'type': 'start',
-      'data': '../test.gb'
+      'data': '../Tetris.gb'
     } );
 
     running = true;

@@ -28,6 +28,20 @@
 
 
   /**
+   * Retrieves a color from a given palette
+   */
+  function get_color( pal, pix )
+  {
+    switch ( pal[ pix ] )
+    {
+      case 0x0: return 0xFF;
+      case 0x1: return 0xAA;
+      case 0x2: return 0x66;
+      case 0x3: return 0x00;
+    }
+  }
+
+  /**
    * Returns a pixel from a tile in the tile data
    * table
    */
@@ -43,13 +57,7 @@
     pix |= ( ( b0 & ( 1 << c ) ) >> c ) << 0;
     pix |= ( ( b1 & ( 1 << c ) ) >> c ) << 1;
 
-    switch ( emu.lcd_bg[ pix ] )
-    {
-      case 0x0: return 0xFF;
-      case 0x1: return 0xAA;
-      case 0x2: return 0x66;
-      case 0x3: return 0x00;
-    }
+    return pix;
   }
 
   function build_background( vidx, y, x )
@@ -62,6 +70,7 @@
     }
 
     pix = get_tile_pixel( tile, y & 7, 7 - ( x & 7 ) );
+    pix = get_color( emu.lcd_bg, pix );
 
     emu.vram[ vidx + 0 ] = pix;
     emu.vram[ vidx + 1 ] = pix;
@@ -79,6 +88,7 @@
     }
 
     pix = get_tile_pixel( tile, y & 7, 7 - ( x & 7 ) );
+    pix = get_color( emu.lcd_bg, pix );
 
     emu.vram[ vidx + 0 ] = pix;
     emu.vram[ vidx + 1 ] = pix;
@@ -128,25 +138,29 @@
 
       for ( var i = 0; i < 40; ++i )
       {
-        x0 = emu.ram[ 0xFE00 + ( i << 2 ) + 0 ];
         y0 = emu.ram[ 0xFE00 + ( i << 2 ) + 0 ];
-        p = emu.ram[ 0xFE00 + ( i << 2 ) + 0 ];
-        f = emu.ram[ 0xFE00 + ( i << 2 ) + 0 ];
+        x0 = emu.ram[ 0xFE00 + ( i << 2 ) + 1 ];
+        p  = emu.ram[ 0xFE00 + ( i << 2 ) + 2 ];
+        f  = emu.ram[ 0xFE00 + ( i << 2 ) + 3 ];
 
-        for ( var y = y0; y < Math.min( y0 + 8, 144 ); ++y )
+        for ( var y = Math.max( 0, y0 - 16 ); y < Math.min( y0 - 8, 144 ); ++y )
         {
-          for (var x = x0; x < Math.min( x0 + 8, 160 ); ++x )
+          for (var x = Math.max( 0, x0 - 8 ); x < Math.min( x0, 160 ); ++x )
           {
-            xx = x - x0;
-            yy = y - y0;
+            xx = ( f & 0x20 ) ? ( 15 - x + x0 ) : ( x - x0 );
+            yy = ( f & 0x40 ) ? ( 7 - y + y0 ) : ( y - y0 );
             vidx = ( y * 160 + x ) << 2;
 
             pix = get_tile_pixel( p, yy & 7, 7 - ( xx & 7 ) );
+            pix = get_color( f & 0x10 ? emu.lcd_obp1 : emu.lcd_obp0, pix );
 
-            emu.vram[ vidx + 0 ] = pix;
-            emu.vram[ vidx + 1 ] = pix;
-            emu.vram[ vidx + 2 ] = pix;
-            emu.vram[ vidx + 3 ] = 0xFF;
+            if ( pix != 0x00 )
+            {
+              emu.vram[ vidx + 0 ] = pix;
+              emu.vram[ vidx + 1 ] = pix;
+              emu.vram[ vidx + 2 ] = pix;
+              emu.vram[ vidx + 3 ] = 0xFF;
+            }
           }
         }
       }

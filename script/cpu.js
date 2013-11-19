@@ -7,7 +7,6 @@
 ( function ( emu )
 {
   // State
-  emu.cycles  = 0;
   emu.halted  = false;
   emu.stopped = false;
   emu.vblank  = false;
@@ -137,7 +136,6 @@
   accessFlag( 'nf', 6 );
   accessFlag( 'hf', 5 );
   accessFlag( 'cf', 4 );
-
 
   /**
    * Sign extend an 8 bit number
@@ -498,18 +496,19 @@
     {
       // NOP
       case ( op == 0x00 ):
+        emu.inc_cycles( 4 );
         emu.cycles += 4;
         return;
 
       // LD (bc), a
       case ( op == 0x02 ):
-        emu.cycles += 8;
+        emu.inc_cycles( 8 );
         emu.set_byte( emu.bc, emu.a );
         return;
 
       // RLCA
       case ( op == 0x07 ):
-        emu.cycles += 4;
+        emu.inc_cycles( 4 );
 
         c = emu.cf ? 0x01 : 0x00;
 
@@ -523,20 +522,20 @@
 
       // LD (nn), sp
       case ( op == 0x08 ):
-        emu.cycles += 20;
+        emu.inc_cycles( 20 );
         emu.pc += 2;
         emu.set_word( u16, emu.sp );
         return;
 
       // LD a, (bc)
       case ( op == 0x0A ):
-        emu.cycles += 8;
+        emu.inc_cycles( 8 );
         emu.a = emu.get_byte( emu.bc );
         return;
 
       // RRCA
       case ( op == 0x0F ):
-        emu.cycles += 4;
+        emu.inc_cycles( 4 );
 
         var c = emu.cf ? 0x80 : 0x00;
 
@@ -551,26 +550,27 @@
 
       // STOP
       case ( op == 0x10 ):
-        emu.cycles += 4;
+        emu.inc_cycles( 4 );
         emu.pc += 1;
         emu.stopped = true;
+        send_debug_info( );
         return;
 
       // LD (de), a
       case ( op == 0x12 ):
-        emu.cycles += 8;
+        emu.inc_cycles( 8 );
         emu.set_byte( emu.de, emu.a );
         return;
 
       // LD a, (de)
       case ( op == 0x1A ):
-        emu.cycles += 8;
+        emu.inc_cycles( 8 );
         emu.a = emu.get_byte( emu.de );
         return;
 
       // RLA
       case ( op == 0x17 ):
-        emu.cycles += 4;
+        emu.inc_cycles( 4 );
 
         c = emu.cf ? 0x01 : 0x00;
 
@@ -584,7 +584,7 @@
 
       // RRA
       case ( op == 0x1F ):
-        emu.cycles += 4;
+        emu.inc_cycles( 4 );
 
         c = emu.cf ? 0x80 : 0x00;
 
@@ -598,21 +598,21 @@
 
       // JR n
       case ( op == 0x18 ):
-        emu.cycles += 8;
+        emu.inc_cycles( 8 );
         emu.pc += 1;
         emu.pc = ( emu.pc + s8 ) & 0xFFFF;
         return;
 
       // LDI (hl), a
       case ( op == 0x22 ):
-        emu.cycles += 8;
+        emu.inc_cycles( 8 );
         emu.set_byte( emu.hl, emu.a );
         emu.hl = ( emu.hl + 1 ) & 0xFFFF;
         return;
 
       // DAA
       case ( op == 0x27 ):
-        emu.cycles += 4;
+        emu.inc_cycles( 4 );
 
         tmp = 0x00;
         if ( emu.nf )
@@ -652,7 +652,7 @@
 
       // CPL
       case ( op == 0x2F ):
-        emu.cycles += 4;
+        emu.inc_cycles( 4 );
         emu.a = ~emu.a;
         emu.nf = true;
         emu.hf = true;
@@ -660,28 +660,28 @@
 
       // LDI a, (hl)
       case ( op == 0x2A ):
-        emu.cycles += 8;
+        emu.inc_cycles( 8 );
         emu.a = emu.get_byte( emu.hl );
         emu.hl = ( emu.hl + 1 ) & 0xFFFF;
         return;
 
       // LDD (hl), a
       case ( op == 0x32 ):
-        emu.cycles += 8;
+        emu.inc_cycles( 8 );
         emu.set_byte( emu.hl, emu.a );
         emu.hl = ( emu.hl - 1 ) & 0xFFFF;
         return;
 
       // LDD a, (hl)
       case ( op == 0x3A ):
-        emu.cycles += 8;
+        emu.inc_cycles( 8 );
         emu.a = emu.get_byte( emu.hl );
         emu.hl = ( emu.hl - 1 ) & 0xFFFF;
         return;
 
       // SCF
       case ( op == 0x37 ):
-        emu.cycles += 4;
+        emu.inc_cycles( 4 );
         emu.nf = false;
         emu.hf = false;
         emu.cf = true;
@@ -689,7 +689,7 @@
 
       // CCF
       case ( op == 0x3F ):
-        emu.cycles += 4;
+        emu.inc_cycles( 4 );
         emu.nf = false;
         emu.hf = false;
         emu.cf = !emu.cf;
@@ -697,13 +697,13 @@
 
       // HALT
       case ( op == 0x76 ):
-        emu.cycles += 4;
+        emu.inc_cycles( 4 );
         emu.halted = true;
         return;
 
       // CALL nn
       case ( op == 0xCD ):
-        emu.cycles += 12;
+        emu.inc_cycles( 12 );
         emu.sp = ( emu.sp - 2 ) & 0xFFFF;
         emu.set_word( emu.sp, ( emu.pc + 2 ) & 0xFFFF );
         emu.pc = u16;
@@ -711,13 +711,13 @@
 
       // JP nn
       case ( op == 0xC3 ):
-        emu.cycles += 12;
+        emu.inc_cycles( 12 );
         emu.pc = u16;
         return;
 
       // RET
       case ( op == 0xC9 ):
-        emu.cycles += 8;
+        emu.inc_cycles( 8 );
         emu.pc = emu.get_word( emu.sp );
         emu.sp = ( emu.sp + 2 ) & 0xFFFF;
         return;
@@ -728,7 +728,7 @@
         x  = ( op & 0xC0 ) >> 6;
         y  = ( op & 0x38 ) >> 3;
         z  = ( op & 7 );
-        emu.cycles += z == 0x6 ? 16 : 8;
+        emu.inc_cycles( z == 0x6 ? 16 : 8 );
 
         switch ( x )
         {
@@ -759,20 +759,20 @@
 
       // LDH (n), a
       case ( op == 0xE0 ):
-        emu.cycles += 12;
+        emu.inc_cycles( 12 );
         emu.pc += 1;
         emu.set_byte( 0xFF00 + u8, emu.a );
         return;
 
       // LD (c), a
       case ( op == 0xE2 ):
-        emu.cycles += 12;
+        emu.inc_cycles( 12 );
         emu.set_byte( 0xFF00 + emu.c, emu.a );
         return;
 
       // ADD sp, n
       case ( op == 0xE8 ):
-        emu.cycles += 16;
+        emu.inc_cycles( 16 );
         emu.pc += 2;
 
         tmp = ( emu.sp + s8 ) & 0xFFFF;
@@ -788,20 +788,20 @@
 
       // JP (hl)
       case ( op == 0xE9 ):
-        emu.cycles += 4;
+        emu.inc_cycles( 4 );
         emu.pc = emu.hl;
         return;
 
       // LD (nn), a
       case ( op == 0xEA ):
-        emu.cycles += 16;
+        emu.inc_cycles( 16 );
         emu.pc += 2;
         emu.set_byte( u16, emu.a );
         return;
 
       // RETI
       case ( op == 0xD9 ):
-        emu.cycles += 8;
+        emu.inc_cycles( 8 );
         emu.pc = emu.get_word( emu.sp );
         emu.sp = ( emu.sp + 2 ) & 0xFFFF;
         emu.ime = true;
@@ -809,26 +809,26 @@
 
       // LDH a, (n)
       case ( op == 0xF0 ):
-        emu.cycles += 12;
+        emu.inc_cycles( 12 );
         emu.pc += 1;
         emu.a = emu.get_byte( 0xFF00 + u8 );
         return;
 
       // LD a, (c)
       case ( op == 0xF2 ):
-        emu.cycles += 12;
+        emu.inc_cycles( 12 );
         emu.a = emu.get_byte( 0xFF00 + emu.c );
         return;
 
       // DI
       case ( op == 0xF3 ):
-        emu.cycles += 4;
+        emu.inc_cycles( 4 );
         emu.ime = false;
         return;
 
       // LDHL sp, n
       case ( op == 0xF8 ):
-        emu.cycles += 12;
+        emu.inc_cycles( 12 );
         emu.pc += 1;
 
         tmp = ( emu.sp + s8 ) & 0xFFFF;
@@ -844,46 +844,38 @@
 
       // LD sp, hl
       case ( op == 0xF9 ):
-        emu.cycles += 8;
+        emu.inc_cycles( 8 );
         emu.sp = emu.hl;
         return;
 
       // EI
       case ( op == 0xFB ):
-        emu.cycles += 4;
+        emu.inc_cycles( 4 );
         emu.ime = true;
         return;
 
       // LD a, (nn)
       case ( op == 0xFA ):
-        emu.cycles += 16;
+        emu.inc_cycles( 16 );
         emu.pc += 2;
         emu.a = emu.get_byte( u16 );
         return;
 
       // LD r[y], r[z]
       case ( ( op & 0xC0 ) == 0x40 ):
-        emu.cycles += 4;
-        if ( y == 0x6 || z == 0x6 ) {
-          emu.cycles += 4;
-        }
-
+        emu.inc_cycles( ( y == 0x6 || z == 0x6 ) ? 8 : 4 );
         set_r( y, get_r( z ) );
         return;
 
       // ALU[y] r[z]
       case ( ( op & 0xC0 ) == 0x80 ):
-        emu.cyles += 4;
-        if ( z == 0x06 ) {
-          emu.cycles += 4;
-        }
-
+        emu.inc_cycles( z == 0x6 ? 8 : 4 );
         alu_8( y, get_r( z ) );
         return;
 
       // INC r[p]
       case ( ( op & 0xC7 ) == 0x04 ):
-        emu.cycles += y == 0x6 ? 12 : 4;
+        emu.inc_cycles( y == 0x6 ? 12 : 4 );
         r = get_r( y );
 
         r = ( r + 1 ) & 0xFF;
@@ -897,7 +889,7 @@
 
       // DEC r[p]
       case ( ( op & 0xC7 ) == 0x05 ):
-        emu.cycles += y == 0x6 ? 12 : 4;
+        emu.inc_cycles( y == 0x6 ? 12 : 4 );
         r = get_r( y );
 
         r = ( r - 1 ) & 0xFF;
@@ -911,29 +903,21 @@
 
       // LD r[y], n
       case ( ( op & 0xC7 ) == 0x06 ):
-        emu.cycles += 8;
+        emu.inc_cycles( y == 0x6 ? 12 : 8 );
         emu.pc += 1;
-        if ( y == 0x6) {
-          emu.cycles += 4;
-        }
-
         set_r( y, u8 );
         return;
 
       // ALU[y] n
       case ( ( op & 0xC7 ) == 0xC6 ):
-        emu.cyles += 4;
+        emu.inc_cycles( z == 0x6 ? 8 : 4 );
         emu.pc += 1;
-        if ( z == 0x06 ) {
-          emu.cycles += 4;
-        }
-
         alu_8( y, u8 );
         return;
 
       // RST y * 8
       case ( ( op & 0xC7 ) == 0xC7 ):
-        emu.cycles += 32;
+        emu.inc_cycles( 32 );
         emu.sp = ( emu.sp - 2 ) & 0xFFFF;
         emu.set_word( emu.sp, emu.pc );
         emu.pc = y << 3;
@@ -941,26 +925,26 @@
 
       // LD rp[p], nn
       case ( ( op & 0xCF) == 0x01 ):
-        emu.cycles += 12;
+        emu.inc_cycles( 12 );
         emu.pc += 2;
         set_rp( p, u16 );
         return;
 
       // INC rp[p]
       case ( ( op & 0xCF ) == 0x03 ):
-        emu.cycles += 8;
+        emu.inc_cycles( 8 );
         set_rp( p, ( get_rp( p ) + 1 ) & 0xFFFF );
         return;
 
       // DEC rp[p]
-      case ( (op & 0xCF ) == 0x0B ):
-        emu.cycles += 8;
+      case ( ( op & 0xCF ) == 0x0B ):
+        emu.inc_cycles( 8 );
         set_rp( p, ( get_rp( p ) - 1 ) & 0xFFFF );
         return;
 
       // ADD hl, rp[p]
       case ( ( op & 0xCF ) == 0x09 ):
-        emu.cycles += 8;
+        emu.inc_cycles( 8 );
 
         tmp = emu.hl + get_rp( p );
 
@@ -971,26 +955,22 @@
         emu.hl = tmp & 0xFFFF;
         return;
 
-      // POP nn
+      // POP rp[p]
       case ( ( op & 0xCF ) == 0xC1 ):
-        emu.cycles += 12;
+        emu.inc_cycles( 12 );
 
         switch ( p ) {
           case 0x0: emu.bc = emu.get_word( emu.sp ); break;
           case 0x1: emu.de = emu.get_word( emu.sp ); break;
           case 0x2: emu.hl = emu.get_word( emu.sp ); break;
-          case 0x3:
-          {
-            emu.af = emu.get_word( emu.sp );
-          }
-          break;
+          case 0x3: emu.af = emu.get_word( emu.sp ); break;
         }
         emu.sp = ( emu.sp + 2 ) & 0xFFFF;
         return;
 
-      // PUSH nn
+      // PUSH rp[p]
       case ( ( op & 0xCF ) == 0xC5 ):
-        emu.cycles += 16;
+        emu.inc_cycles( 16 );
         emu.sp = ( emu.sp - 2 ) & 0xFFFF;
 
         switch ( p ) {
@@ -1003,11 +983,11 @@
 
       // JR cc, n
       case ( ( op & 0xE7 ) == 0x20 ):
-        emu.cycles += 8;
+        emu.inc_cycles( 8 );
         emu.pc += 1;
 
         if ( check_cond( y - 4 ) ) {
-          emu.cycles += 4;
+        emu.inc_cycles( 4 );
           emu.pc = ( emu.pc + s8 ) & 0xFFFF;
         }
 
@@ -1015,10 +995,10 @@
 
       // RET cc
       case ( ( op & 0xE7 ) == 0xC0 ):
-        emu.cycles += 8;
+        emu.inc_cycles( 8 );
 
         if ( check_cond( y ) ) {
-          emu.cycles += 12;
+          emu.inc_cycles( 12 );
           emu.pc = emu.get_word( emu.sp );
           emu.sp = ( emu.sp + 2 ) & 0xFFFF;
         }
@@ -1027,24 +1007,24 @@
 
       // JP cc, nn
       case ( ( op & 0xE7 ) == 0xC2 ):
-        emu.cycles += 12;
+        emu.inc_cycles( 12 );
         emu.pc += 2;
 
         if ( check_cond( y ) ) {
-          emu.cycles += 4;
+          emu.inc_cycles( 4 );
           emu.pc = u16;
         }
         return;
 
       // CALL cc[y], nn
       case ( ( op & 0xE7 ) == 0xC4 ):
-        emu.cycles += 12;
+        emu.inc_cycles( 12 );
         emu.pc += 2;
 
         if ( check_cond( y ) ) {
-          emu.cycles += 12;
+          emu.inc_cycles( 12 );
           emu.sp = ( emu.sp - 2 ) & 0xFFFF;
-          emu.set_word( emu.sp, ( emu.pc + 2 ) & 0xFFFF );
+          emu.set_word( emu.sp, emu.pc & 0xFFFF );
           emu.pc = u16;
         }
         return;
@@ -1068,14 +1048,33 @@
     if ( emu.ifVBlank )
     {
       emu.halted = false;
-      emu.ifVBlank = false;
 
       if ( emu.ime && emu.ieVBlank )
       {
-        emu.cycles += 20;
+        emu.ime = false;
+        emu.ifVBlank = false;
+
+        emu.inc_cycles( 16 );
         emu.sp = ( emu.sp - 2 ) & 0xFFFF;
         emu.set_word( emu.sp, emu.pc );
         emu.pc = 0x0040;
+      }
+    }
+
+    // Timer interrupt
+    if ( emu.ifTimer )
+    {
+      emu.halted = false;
+
+      if ( emu.ime && emu.ieTimer )
+      {
+        emu.ime = false;
+        emu.ifTimer = false;
+
+        emu.inc_cycles( 16 );
+        emu.sp = ( emu.sp - 2 ) & 0xFFFF;
+        emu.set_word( emu.sp, emu.pc );
+        emu.pc = 0x0050;
       }
     }
 
@@ -1083,11 +1082,13 @@
     if ( emu.ifPins )
     {
       emu.halted = false;
-      emu.ifPins = false;
 
       if ( emu.ime && emu.iePins )
       {
-        emu.cycles += 20;
+        emu.ime = false;
+        emu.ifPins = false;
+
+        emu.inc_cycles( 16 );
         emu.sp = ( emu.sp - 2 ) & 0xFFFF;
         emu.set_word( emu.sp, emu.pc );
         emu.pc = 0x0060;
@@ -1097,12 +1098,14 @@
     // Run an instruction
     if ( emu.halted )
     {
-      emu.cycles += 4;
+      emu.inc_cycles( 4 );
     }
     else
     {
       instr( emu.get_byte( emu.pc++ ) );
     }
+
+    emu.timer_step( );
 
     // Debug breakpoint
     if ( emu.pc == emu.debug_break ) {
@@ -1111,13 +1114,13 @@
     }
 
     // HBlank
-    if ( emu.cycles >= 456 )
+    if ( emu.gpu_cycles >= 456 )
     {
       emu.lcd_ly++;
-      emu.cycles -= 456;
+      emu.gpu_cycles -= 456;
     }
 
-    // VBlank
+    // VBlank start
     if ( emu.lcd_ly > 143 && emu.vblank )
     {
       send_debug_info( );
@@ -1128,6 +1131,7 @@
       emu.vblank = false;
     }
 
+    // VBlank end
     if ( emu.lcd_ly > 153 )
     {
       emu.lcd_ly = 0;

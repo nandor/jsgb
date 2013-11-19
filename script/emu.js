@@ -8,6 +8,7 @@ importScripts( '../script/cpu.js'
              , '../script/ram.js'
              , '../script/rom.js'
              , '../script/lcd.js'
+             , '../script/timer.js'
              );
 
 /**
@@ -89,7 +90,6 @@ function run( )
   t0 = ( new Date( ) ).getTime( );
 
   // Do stuff
-  c0 = emu.cycles;
   emu.wait = false;
 
   do
@@ -175,7 +175,7 @@ onmessage = function( e )
     }
     case 'stop':
     {
-      emu.halted = true;
+      emu.stopped = true;
       return;
     }
   }

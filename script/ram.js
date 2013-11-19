@@ -8,6 +8,7 @@
 {
   // Internal memory
   emu.cartridge_type   = 0x01;
+  emu.rom              = null;
   emu.ram              = new Uint8Array( 0x10000 );
   emu.nr               = new Uint8Array( 52 );
   emu.rom_bank         = 0x01;
@@ -25,7 +26,7 @@
   emu.key_up           = false;
   emu.key_down         = false;
 
-  // DMA
+  // DMG
   emu.boot_rom_enabled = true;
 
   // Bootstrap rom, source:
@@ -78,6 +79,7 @@
     }
 
     // Load the first two banks
+    emu.rom = rom;
     for ( var i = 0; i < 0x8000; ++i )
     {
       emu.ram[ i ] = rom.data[ i ];
@@ -309,6 +311,27 @@
 
         return;
 
+      // DIV
+      case ( 0xFF04 == addr ):
+        emu.timer_div = 0x00;
+        return;
+
+      // TIMA
+      case ( 0xFF05 == addr ):
+        emu.timer_counter = val & 0xFF;
+        return;
+
+      // TMA
+      case ( 0xFF06 == addr ):
+        emu.timer_modulo = val & 0xFF;
+        return;
+
+      // TAC
+      case ( 0xFF07 == addr ):
+        emu.timer_enable = ( val & 0x04 ) != 0x00;
+        emu.timer_clock = val & 0x03;
+        return;
+
       // NR x
       case ( 0xFF10 <= addr && addr <= 0xFF26 ):
         emu.nr[ addr - 0xFF00 ] = val & 0xFF;
@@ -355,10 +378,15 @@
 
       // LYC
       case ( addr == 0xFF45 ):
+        log( "LYC write unimplemented" );
         return;
 
       // DMA
       case ( addr == 0xFF46 ):
+        for ( var i = 0x00; i < 160; ++i )
+        {
+          emu.ram[ 0xFE00 + i ] = emu.ram[ ( val << 8 ) + i ];
+        }
         return;
 
       // BGP
@@ -427,6 +455,24 @@
       case ( addr == 0xFF00 ):
         return emu.keys;
 
+      // DIV
+      case ( 0xFF04 == addr ):
+        return emu.timer_div;
+
+      // TIMA
+      case ( 0xFF05 == addr ):
+        return emu.timer_counter;
+
+      // TMA
+      case ( 0xFF06 == addr ):
+        return emu.timer_modulo;
+
+      // TAC
+      case ( 0xFF07 == addr ):
+        ret |= emu.timer_enable ? 0x40 : 0x00;
+        ret |= emu.timer_clock & 0x03;
+        return ret;
+
       // NR x
       case ( 0xFF10 <= addr && addr <= 0xFF26 ):
         return emu.nr[ addr - 0xFF00 ];
@@ -470,11 +516,12 @@
 
       // LYC
       case ( addr == 0xFF45 ):
+        log( "LYC unimplemented" );
         return;
 
       // DMA
       case ( addr == 0xFF46 ):
-        return;
+        throw "Error: DMA is read only";
 
       // BGP
       case ( addr == 0xFF47 ):
@@ -490,7 +537,7 @@
         ret |= emu.lcd_obp0[ 1 ] << 2;
         ret |= emu.lcd_obp0[ 2 ] << 4;
         ret |= emu.lcd_obp0[ 3 ] << 6;
-        return;
+        return ret;
 
       // OBP1
       case ( addr == 0xFF49 ):
@@ -498,7 +545,7 @@
         ret |= emu.lcd_obp1[ 1 ] << 2;
         ret |= emu.lcd_obp1[ 2 ] << 4;
         ret |= emu.lcd_obp1[ 3 ] << 6;
-        return;
+        return ret;
 
       // WY
       case ( addr == 0xFF4A ):
@@ -535,13 +582,13 @@
       }
       case ( 0x2000 <= addr && addr < 0x4000 ):
       {
-        tmp = val & 0x1E;
+        tmp = val & 0x1F;
         tmp = tmp ? tmp : 0x01;
         emu.rom_bank = ( emu.rom_bank & 0xE0 ) | tmp;
 
         for ( var idx = 0x4000; idx < 0x8000; ++idx )
         {
-          emu.ram[ idx ] = emu.rom.data[ emu.rom_bank * 0x4000 + idx ];
+          emu.ram[ idx ] = emu.rom.data[ ( emu.rom_bank - 1 ) * 0x4000 + idx ];
         }
 
         return;
@@ -549,6 +596,7 @@
       default:
       {
         log( "MBC1: " + addr.toString( 16 ) + " " + val.toString( 16 ) );
+        log( "PC: " + emu.pc.toString( 16 ) );
       }
     }
   }
