@@ -4,7 +4,7 @@
  * (C) 2013 Licker Nandor. All rights reserved.
  */
 
-( function ( emu )
+( function( emu )
 {
   // State
   emu.halted  = false;
@@ -497,7 +497,6 @@
       // NOP
       case ( op == 0x00 ):
         emu.inc_cycles( 4 );
-        emu.cycles += 4;
         return;
 
       // LD (bc), a
@@ -553,7 +552,6 @@
         emu.inc_cycles( 4 );
         emu.pc += 1;
         emu.stopped = true;
-        send_debug_info( );
         return;
 
       // LD (de), a
@@ -1110,7 +1108,7 @@
     // Debug breakpoint
     if ( emu.pc == emu.debug_break ) {
       emu.stopped = true;
-      send_debug_info( );
+      emu.show_debug_info( );
     }
 
     // HBlank
@@ -1123,9 +1121,8 @@
     // VBlank start
     if ( emu.lcd_ly > 143 && emu.vblank )
     {
-      send_debug_info( );
+      emu.show_debug_info( );
       emu.build_vram( );
-      postMessage( { 'type': 'vsync', 'data': emu.vram } );
 
       emu.ifVBlank = true;
       emu.vblank = false;

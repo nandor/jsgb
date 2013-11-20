@@ -4,7 +4,7 @@
  * (C) 2013 Licker Nandor. All rights reserved.
  */
 
-( function( )
+( function( emu )
 {
   // Clock cycle counters
   emu.cpu_cycles     = 0;

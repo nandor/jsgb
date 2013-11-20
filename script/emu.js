@@ -4,179 +4,187 @@
  * (C) 2013 Licker Nandor. All rights reserved.
  */
 
-importScripts( '../script/cpu.js'
-             , '../script/ram.js'
-             , '../script/rom.js'
-             , '../script/lcd.js'
-             , '../script/timer.js'
-             );
+( function ( emu ) {
+  emu.canvas   = null;
+  emu.ctx      = null;
+  emu.ctx_data = null;
+  emu.vram     = null;
 
-/**
- * Prevents the ROM from being reloaded
- * when we resume the emulator
- */
-var rom_loaded = false;
-
-
-/**
- * True if we want to send back debug info
- */
-var debug = false;
-
-
-/**
- * Loads a rom file
- */
-function load_rom( file, callback )
-{
-  var req;
-
-  req = new XMLHttpRequest( );
-  req.open( "GET", file, true );
-  req.responseType = "arraybuffer";
-
-  req.onload = function( evt )
+  /**
+   * Converts a number to hex and pads it with leading zeros
+   */
+  function hex( x, n )
   {
-    callback( new ROM( req.response ) );
-  }
+    var s;
 
-  req.send( );
-}
-
-
-/**
- * Sends a log message to the client
- */
-function log( msg )
-{
-  postMessage( {
-    'type': 'log',
-    'data': msg
-  } );
-}
-
-
-/**
- * Sends debug info
- */
-function send_debug_info( )
-{
-  postMessage( {
-    'type': 'debug',
-    'data': {
-      'a': emu.a,
-      'f': emu.f,
-      'b': emu.b,
-      'c': emu.c,
-      'd': emu.d,
-      'e': emu.e,
-      'h': emu.h,
-      'l': emu.l,
-      'sp': emu.sp,
-      'pc': emu.pc,
-      'ly': emu.lcd_ly
-    }
-  } );
-}
-
-
-/**
- * Runs until stopped
- */
-function run( )
-{
-  var t0, t1, c0;
-
-  t0 = ( new Date( ) ).getTime( );
-
-  // Do stuff
-  emu.wait = false;
-
-  do
-  {
-    emu.tick( );
-  } while ( !emu.wait && !emu.stopped );
-
-  // Only run a new frame if we did not stop
-  if ( !emu.stopped )
-  {
-    // Wait to keep a steady framerate
-    //do
-    //{
-    //  t1 = ( new Date( ) ).getTime( );
-    //} while ( t1 - t0 < 16 );
-
-    setTimeout( run, 0 );
-  }
-
-  postMessage( {
-    'type': 'halt',
-    'data': null
-  } );
-}
-
-
-/**
- * Handles messages such as start, stop, vblank
- */
-onmessage = function( e )
-{
-  switch ( e.data.type )
-  {
-    case 'start':
+    s = x.toString( 16 );
+    while ( s.length < n )
     {
-      if ( !rom_loaded )
-      {
-        rom_loaded = true;
-        load_rom( e.data.data, function( rom )
-        {
-          emu.load_rom( rom );
-          run( );
-        } );
-      }
-      else
-      {
-        emu.stopped = false;
-        run( );
-      }
-
-      return;
+      s = "0" + s;
     }
-    case 'step':
+
+    return "0x" + s;
+  }
+
+
+  /**
+   * Converts a number to binary and pads it with leading zeros
+   */
+  function bin( x, n )
+  {
+    var s;
+
+    s = x.toString( 2 );
+    while ( s.length < n )
+    {
+      s = "0" + s;
+    }
+
+    return "0b" + s;
+  }
+
+
+  /**
+   * Loads a rom file
+   */
+  emu.load_rom = function( file, callback )
+  {
+    var req;
+
+    req = new XMLHttpRequest( );
+    req.open( "GET", file, true );
+    req.responseType = "arraybuffer";
+
+    req.onload = function( evt )
+    {
+      emu.read_rom( new ROM( req.response ) );
+      if ( callback )
+      {
+        callback( );
+      }
+    }
+
+    req.send( );
+  }
+
+  /**
+   * Displays debug info
+   */
+  emu.show_debug_info = function( )
+  {
+    $( "#dbg-reg-a"  ).text( hex( emu.a,      2 ) );
+    $( "#dbg-reg-f"  ).text( bin( emu.f,      8 ) );
+    $( "#dbg-reg-b"  ).text( hex( emu.b,      2 ) );
+    $( "#dbg-reg-c"  ).text( hex( emu.c,      2 ) );
+    $( "#dbg-reg-d"  ).text( hex( emu.d,      2 ) );
+    $( "#dbg-reg-e"  ).text( hex( emu.e,      2 ) );
+    $( "#dbg-reg-h"  ).text( hex( emu.h,      2 ) );
+    $( "#dbg-reg-l"  ).text( hex( emu.l,      2 ) );
+    $( "#dbg-reg-sp" ).text( hex( emu.sp,     4 ) );
+    $( "#dbg-reg-pc" ).text( hex( emu.pc,     4 ) );
+    $( "#dbg-reg-ly" ).text( hex( emu.lcd_ly, 2 ) );
+  }
+
+  $( window ).on( 'ready', function( )
+  {
+    /**
+     * Starts the emulator
+     */
+    $( "#btn-start" ).on( 'click', function( )
     {
       emu.stopped = false;
-      emu.tick( );
-      emu.debug_build_vram( );
-      postMessage( { 'type': 'vsync', 'data': emu.vram } );
-      send_debug_info( );
-      return;
-    }
-    case 'key':
-    {
-      switch ( e.data.data.key )
-      {
-        case 'up':     emu.key_up     = e.data.data.state; break;
-        case 'down':   emu.key_down   = e.data.data.state; break;
-        case 'left':   emu.key_left   = e.data.data.state; break;
-        case 'right':  emu.key_right  = e.data.data.state; break;
-        case 'a':      emu.key_a      = e.data.data.state; break;
-        case 'b':      emu.key_b      = e.data.data.state; break;
-        case 'start':  emu.key_start  = e.data.data.state; break;
-        case 'select': emu.key_select = e.data.data.state; break;
-      }
+    } );
 
-      emu.ifPins |= e.data.data.state;
-      return;
-    }
-    case 'break':
+
+    /**
+     * Performs a single step
+     */
+    $( "#btn-step" ).on( 'click', function( )
     {
-      emu.debug_break = e.data.data;
-      return;
-    }
-    case 'stop':
+      emu.stopped = false;
+      emu.cpu_tick( );
+      emu.stopped = true;
+    } );
+
+
+    /**
+     * Stops the emulator
+     */
+    $( "#btn-stop" ).on( 'click', function( )
     {
       emu.stopped = true;
-      return;
+    } );
+
+
+    /**
+     * Handles keyboard input ( key press )
+     */
+    $( document ).on( 'keydown', function( evt )
+    {
+      switch ( evt.keyCode )
+      {
+        case 38: emu.key_up     = true; emu.ifPins = true; break;
+        case 40: emu.key_down   = true; emu.ifPins = true; break;
+        case 37: emu.key_left   = true; emu.ifPins = true; break;
+        case 39: emu.key_right  = true; emu.ifPins = true; break;
+        case 81: emu.key_start  = true; emu.ifPins = true; break;
+        case 87: emu.key_select = true; emu.ifPins = true; break;
+        case 65: emu.key_a      = true; emu.ifPins = true; break;
+        case 66: emu.key_b      = true; emu.ifPins = true; break;
+      }
+    } );
+
+
+    /**
+     * Handles keyboard input ( key release )
+     */
+    $( document ).on( 'keyup', function( evt )
+    {
+      switch ( evt.keyCode )
+      {
+        case 38: emu.key_up     = false; break;
+        case 40: emu.key_down   = false; break;
+        case 37: emu.key_left   = false; break;
+        case 39: emu.key_right  = false; break;
+        case 81: emu.key_start  = false; break;
+        case 87: emu.key_select = false; break;
+        case 65: emu.key_a      = false; break;
+        case 66: emu.key_b      = false; break;
+      }
+    } );
+
+    // Get the emu.canvas
+    emu.canvas = $("#lcd").get( 0 );
+    if ( !emu.canvas )
+    {
+      throw "emu.canvas not found"
     }
-  }
-}
+
+    emu.ctx = emu.canvas.getContext( '2d' )
+    if ( !emu.ctx )
+    {
+      throw "Cannot create context";
+    }
+
+    emu.ctx_data = emu.ctx.getImageData( 0, 0, 160, 144 );
+    emu.vram = emu.ctx_data.data;
+
+    // Load the rom
+    emu.load_rom( 'opus5.gb' , function loop( )
+    {
+      emu.wait = false;
+
+      while ( !emu.wait && !emu.stopped )
+      {
+        emu.tick( );
+      }
+
+      emu.ctx.putImageData( emu.ctx_data, 0, 0 );
+
+      if ( !emu.stopped )
+      {
+        requestAnimationFrame( loop );
+      }
+    } );
+  } );
+} ) ( this.emu = this.emu || { } );

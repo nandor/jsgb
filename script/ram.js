@@ -4,7 +4,7 @@
  * (C) 2013 Licker Nandor. All rights reserved.
  */
 
-( function ( emu )
+( function( emu )
 {
   // Internal memory
   emu.cartridge_type   = 0x01;
@@ -70,7 +70,7 @@
   /**
     Load data from a rom cartridge
   */
-  emu.load_rom = function( rom )
+  emu.read_rom = function( rom )
   {
     // Choose an appropiate cartridge controller
     emu.cartridge_type = rom.cartridge_type;
@@ -360,6 +360,12 @@
 
       // STAT
       case ( addr == 0xFF41 ):
+        emu.lcd_stat_lyc    = ( val & 0x40 ) != 0x00;
+        emu.lcd_stat_oam    = ( val & 0x20 ) != 0x00;
+        emu.lcd_stat_vblank = ( val & 0x10 ) != 0x00;
+        emu.lcd_stat_hblank = ( val & 0x08 ) != 0x00;
+        emu.lcd_stat_equ    = ( val & 0x04 ) != 0x00;
+        emu.lcd_stat_mode   = val & 0x03;
         return;
 
       // SCY
@@ -374,11 +380,11 @@
 
       // LY
       case ( addr == 0xFF44 ):
-        throw "IO register LY is read only";
+        throw "Erorr: Register LY is read only";
 
       // LYC
       case ( addr == 0xFF45 ):
-        log( "LYC write unimplemented" );
+        emu.lcd_lyc = val & 0xFF;
         return;
 
       // DMA
@@ -500,7 +506,13 @@
 
       // STAT
       case ( addr == 0xFF41 ):
-        return;
+        ret |= emu.lcd_stat_lyc    ? 0x40 : 0x00;
+        ret |= emu.lcd_stat_oam    ? 0x20 : 0x00;
+        ret |= emu.lcd_stat_vblank ? 0x10 : 0x00;
+        ret |= emu.lcd_stat_hblank ? 0x08 : 0x00;
+        ret |= emu.lcd_stat_equ    ? 0x04 : 0x00;
+        ret |= emu.lcd_stat_mode & 0x03;
+        return ret;
 
       // SCY
       case ( addr == 0xFF42 ):
@@ -516,12 +528,11 @@
 
       // LYC
       case ( addr == 0xFF45 ):
-        log( "LYC unimplemented" );
-        return;
+        return emu.lcd_lyc;
 
       // DMA
       case ( addr == 0xFF46 ):
-        throw "Error: DMA is read only";
+        throw "Error: Register DMA is write only";
 
       // BGP
       case ( addr == 0xFF47 ):
@@ -595,8 +606,8 @@
       }
       default:
       {
-        log( "MBC1: " + addr.toString( 16 ) + " " + val.toString( 16 ) );
-        log( "PC: " + emu.pc.toString( 16 ) );
+        console.log( "MBC1: " + addr.toString( 16 ) + " " + val.toString( 16 ) );
+        console.log( "PC: " + emu.pc.toString( 16 ) );
       }
     }
   }

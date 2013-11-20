@@ -6,6 +6,7 @@
 
 ( function( )
 {
+  // LCDC
   emu.lcd_enable       = false;
   emu.lcd_wnd_tilemap  = 0x9800;
   emu.lcd_wnd_display  = false;
@@ -14,18 +15,28 @@
   emu.lcd_obj_size     = 0x08;
   emu.lcd_obj_display  = false;
   emu.lcd_bg_display   = false;
+
+  // STAT
+  emu.lcd_stat_lyc     = false;
+  emu.lcd_stat_oam     = false;
+  emu.lcd_stat_vblank  = false;
+  emu.lcd_stat_hblank  = false;
+  emu.lcd_stat_equ     = false;
+  emu.lcd_stat_mode    = 0x00;
+
+  // LCD status
   emu.lcd_scx          = 0x00;
   emu.lcd_scy          = 0x00;
   emu.lcd_wy           = 0x00;
   emu.lcd_wx           = 0x00;
   emu.lcd_lx           = 0x00;
   emu.lcd_ly           = 0x00;
+  emu.lcd_lyc          = 0x00;
+
+  // Palettes
   emu.lcd_bg           = [ 0x0, 0x0, 0x0, 0x0 ];
   emu.lcd_obp0         = [ 0x0, 0x0, 0x0, 0x0 ];
   emu.lcd_obp1         = [ 0x0, 0x0, 0x0, 0x0 ];
-  emu.lcd_vblank       = false;
-  emu.vram             = new Uint8Array( 160 * 144 * 4 );
-
 
   /**
    * Retrieves a color from a given palette
