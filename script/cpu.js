@@ -546,6 +546,8 @@
 
       // STOP
       case ( op == 0x10 ):
+        console.log( emu.pc.toString( 16 ) );
+
         emu.inc_cycles( 4 );
         emu.pc += 1;
         emu.stopped = true;

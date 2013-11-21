@@ -456,6 +456,10 @@
       case 0xFF4B:
         return emu.lcd_wx;
 
+      // Speed
+      case 0xFF4D:
+        return 0xFF;
+
       // IE
       case 0xFFFF:
         ret |= emu.iePins   ? 0x10 : 0x00;

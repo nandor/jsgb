@@ -43,6 +43,17 @@
   }
 
   /**
+   * Reset the CPU
+   */
+  emu.reset = function( )
+  {
+    for ( var i = 0; i < emu.ram.length; ++i )
+    {
+      emu.ram[ i ] = ( Math.random( ) * 255 ) & 0xFF;
+    }
+  }
+
+  /**
    * Loads a rom file
    */
   emu.load_rom = function( file, callback )
@@ -156,6 +167,12 @@
         case 65: emu.key_a      = true; emu.ifPins = true; break;
         case 66: emu.key_b      = true; emu.ifPins = true; break;
       }
+
+      if ( emu.stopped && emu.ifPins )
+      {
+        emu.stopped = false;
+        emu.loop( );
+      }
     } );
 
     /**
@@ -193,6 +210,7 @@
     emu.vram = emu.ctx_data.data;
 
     // Load the rom
-    emu.load_rom( 'ttt.gb' , emu.loop );
+    emu.reset( );
+    emu.load_rom( 'Tetris.gb' , emu.loop );
   } );
 } ) ( this.emu = this.emu || { } );
