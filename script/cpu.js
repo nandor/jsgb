@@ -7,12 +7,9 @@
 ( function( emu )
 {
   // State
-  emu.halted  = false;
-  emu.stopped = false;
-  emu.vblank  = false;
-
-  // Debug
-  emu.debug_break = 0xFFFF;
+  emu.halted   = false;
+  emu.stopped  = false;
+  emu.vblank   = false;
 
   // Interrupt enable register
   emu.ime      = false;
@@ -771,7 +768,7 @@
       // ADD sp, n
       case ( op == 0xE8 ):
         emu.inc_cycles( 16 );
-        emu.pc += 2;
+        emu.pc += 1;
 
         tmp = ( emu.sp + s8 ) & 0xFFFF;
         c = emu.sp ^ s8 ^ tmp;
@@ -985,7 +982,7 @@
         emu.pc += 1;
 
         if ( check_cond( y - 4 ) ) {
-        emu.inc_cycles( 4 );
+          emu.inc_cycles( 4 );
           emu.pc = ( emu.pc + s8 ) & 0xFFFF;
         }
 
@@ -1028,7 +1025,8 @@
         return;
 
       default:
-        throw "Invalid opcode: 0x" + op.toString( 16 );
+        throw "Invalid opcode: 0x" + ( op ? op : 0 ).toString( 16 ) +
+              " at address 0x" + emu.pc.toString( 16 );
     }
   }
 
@@ -1104,12 +1102,6 @@
     }
 
     emu.timer_step( );
-
-    // Debug breakpoint
-    if ( emu.pc == emu.debug_break ) {
-      emu.stopped = true;
-      emu.show_debug_info( );
-    }
 
     // HBlank
     if ( emu.gpu_cycles >= 456 )

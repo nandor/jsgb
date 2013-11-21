@@ -26,7 +26,6 @@
     return "0x" + s;
   }
 
-
   /**
    * Converts a number to binary and pads it with leading zeros
    */
@@ -42,7 +41,6 @@
 
     return "0b" + s;
   }
-
 
   /**
    * Loads a rom file
@@ -85,16 +83,43 @@
     $( "#dbg-reg-ly" ).text( hex( emu.lcd_ly, 2 ) );
   }
 
-  $( window ).on( 'ready', function( )
+  /**
+   * Main loop
+   */
+  emu.loop = function( )
+  {
+    emu.wait = false;
+
+    while ( !emu.wait && !emu.stopped )
+    {
+      emu.tick( );
+    }
+
+    emu.ctx.putImageData( emu.ctx_data, 0, 0 );
+
+    if ( !emu.stopped )
+    {
+      requestAnimationFrame( emu.loop );
+    }
+  }
+
+
+  /**
+   * UI initialisation
+   */
+  $( function( )
   {
     /**
      * Starts the emulator
      */
     $( "#btn-start" ).on( 'click', function( )
     {
-      emu.stopped = false;
+      if ( emu.stopped )
+      {
+        emu.stopped = false;
+        emu.loop( );
+      }
     } );
-
 
     /**
      * Performs a single step
@@ -102,10 +127,10 @@
     $( "#btn-step" ).on( 'click', function( )
     {
       emu.stopped = false;
-      emu.cpu_tick( );
+      emu.tick( );
+      emu.show_debug_info( );
       emu.stopped = true;
     } );
-
 
     /**
      * Stops the emulator
@@ -114,7 +139,6 @@
     {
       emu.stopped = true;
     } );
-
 
     /**
      * Handles keyboard input ( key press )
@@ -133,7 +157,6 @@
         case 66: emu.key_b      = true; emu.ifPins = true; break;
       }
     } );
-
 
     /**
      * Handles keyboard input ( key release )
@@ -170,21 +193,6 @@
     emu.vram = emu.ctx_data.data;
 
     // Load the rom
-    emu.load_rom( 'opus5.gb' , function loop( )
-    {
-      emu.wait = false;
-
-      while ( !emu.wait && !emu.stopped )
-      {
-        emu.tick( );
-      }
-
-      emu.ctx.putImageData( emu.ctx_data, 0, 0 );
-
-      if ( !emu.stopped )
-      {
-        requestAnimationFrame( loop );
-      }
-    } );
+    emu.load_rom( 'ttt.gb' , emu.loop );
   } );
 } ) ( this.emu = this.emu || { } );

@@ -46,7 +46,7 @@
       switch ( emu.timer_clock )
       {
         // 4.096 KHz
-        case 0x00: cycles = 976; break
+        case 0x00: cycles = 976; break;
 
         // 262.144 KHz
         case 0x01: cycles = 15;  break;

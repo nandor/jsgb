@@ -147,7 +147,7 @@
     {
       var x0, y0, xx, yy, p, f, vidx;
 
-      for ( var i = 0; i < 40; ++i )
+      for ( var i = 39; i >= 0; --i )
       {
         y0 = emu.ram[ 0xFE00 + ( i << 2 ) + 0 ];
         x0 = emu.ram[ 0xFE00 + ( i << 2 ) + 1 ];
@@ -156,21 +156,25 @@
 
         for ( var y = Math.max( 0, y0 - 16 ); y < Math.min( y0 - 8, 144 ); ++y )
         {
-          for (var x = Math.max( 0, x0 - 8 ); x < Math.min( x0, 160 ); ++x )
+          for (var x = Math.min( x0, 160 ) - 1; x >= Math.max( 0, x0 - 8 ); --x )
           {
             xx = ( f & 0x20 ) ? ( 15 - x + x0 ) : ( x - x0 );
             yy = ( f & 0x40 ) ? ( 7 - y + y0 ) : ( y - y0 );
             vidx = ( y * 160 + x ) << 2;
 
-            pix = get_tile_pixel( p, yy & 7, 7 - ( xx & 7 ) );
-            pix = get_color( f & 0x10 ? emu.lcd_obp1 : emu.lcd_obp0, pix );
-
-            if ( pix != 0x00 )
+            if ( !( f & 0x80 ) || emu.vram[ vidx ] == get_color( emu.lcd_bg, 0x00 ) )
             {
-              emu.vram[ vidx + 0 ] = pix;
-              emu.vram[ vidx + 1 ] = pix;
-              emu.vram[ vidx + 2 ] = pix;
-              emu.vram[ vidx + 3 ] = 0xFF;
+              pix = get_tile_pixel( p, yy & 7, 7 - ( xx & 7 ) );
+
+              if ( pix != 0x00 )
+              {
+                pix = get_color( f & 0x10 ? emu.lcd_obp1 : emu.lcd_obp0, pix );
+
+                emu.vram[ vidx + 0 ] = pix;
+                emu.vram[ vidx + 1 ] = pix;
+                emu.vram[ vidx + 2 ] = pix;
+                emu.vram[ vidx + 3 ] = 0xFF;
+              }
             }
           }
         }

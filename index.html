@@ -10,12 +10,14 @@
     <link rel = "stylesheet" type = "text/css" href = "style/style.css" />
 
     <script type = "text/javascript" src = "lib/jquery.js" > </script>
+    <script type = "text/javascript" src = "lib/fileSaver.js" > </script>
+
     <script type = "text/javascript" src = "script/cpu.js" > </script>
     <script type = "text/javascript" src = "script/ram.js" > </script>
     <script type = "text/javascript" src = "script/rom.js" > </script>
     <script type = "text/javascript" src = "script/lcd.js" > </script>
-    <script type = "text/javascript" src = "script/timer.js" > </script>
     <script type = "text/javascript" src = "script/emu.js" > </script>
+    <script type = "text/javascript" src = "script/timer.js" > </script>
   </head>
   <body>
     <div id = "holder">
@@ -54,10 +56,6 @@
             <td colspan = "2">PC</td>
             <td colspan = "2" id = "dbg-reg-pc"></td>
             <td></td><td></td>
-          </tr>
-          <tr>
-            <td colspan = "4">Break</td>
-            <td><input type = "text" id = "dbg-break"/></td>
           </tr>
         </table>
       </div>

@@ -115,74 +115,17 @@
    */
   emu.get_byte = function( addr )
   {
-    switch ( true )
+    if ( addr < 0x100 && emu.boot_rom_enabled )
     {
-      case ( 0x0000 <= addr && addr < 0x0100 ):
-      {
-        if ( emu.boot_rom_enabled )
-        {
-          return emu.boot_rom[ addr ];
-        }
-
-        return emu.ram[ addr ];
-      }
-
-      // ROM
-      case ( 0x0000 <= addr && addr < 0x8000 ):
-      {
-        return emu.ram[ addr ];
-      }
-
-      // Video RAM
-      case ( 0x8000 <= addr && addr < 0xA000 ):
-      {
-        return emu.ram[ addr ];
-      }
-
-      // Switchable RAM bank
-      case ( 0xA000 <= addr && addr < 0xC000 ):
-      {
-        return emu.ram[ addr ];
-      }
-
-      // Internal RAM & echo
-      case ( 0xC000 <= addr && addr < 0xFE00 ):
-      {
-        return emu.ram[ addr ];
-      }
-
-      // Sprite attrib memory
-      case ( 0xFE00 <= addr && addr < 0xFEA0 ):
-      {
-        return emu.ram[ addr ];
-      }
-
-      // Possibly invalid addresses
-      case ( 0xFEA0 <= addr && addr < 0xFF00 ):
-      {
-        return emu.ram[ addr ];
-      }
-
-      // IO ports
-      case ( 0xFF00 <= addr && addr < 0xFF80 ):
-      {
-        return emu.io_read( addr );
-      }
-
-      // High RAM area
-      case ( 0xFF80 <= addr && addr < 0xFFFF ):
-      {
-        return emu.ram[ addr ];
-      }
-
-      // Enable interrupts register
-      case ( addr == 0xFFFF ):
-      {
-        return emu.io_read( addr );
-      }
+      return emu.boot_rom[ addr ];
     }
 
-    throw new Error( "Reserved memory at 0x" + addr.toString( 16 ) );
+    if ( 0xFF00 <= addr && addr < 0xFF80 || addr == 0xFFFF )
+    {
+      return emu.io_read( addr );
+    }
+
+    return emu.ram[ addr ];
   }
 
   /**
@@ -190,94 +133,37 @@
    */
   emu.set_byte = function( addr, val )
   {
-    switch ( true ) {
+    if ( 0xC000 <= addr && addr < 0xE000 )
+    {
+      emu.ram[ addr ] = val & 0xFF;
+      return;
+    }
 
-      // Restart and interrupt vectors
-      case ( 0x0000 <= addr && addr < 0x0100 ):
-      {
-        emu.ram[ addr ] = val & 0xFF;
-        return;
-      }
+    if ( 0xFF00 <= addr && addr < 0xFF80 || addr == 0xFFFF )
+    {
+      emu.io_write( addr, val );
+      return;
+    }
 
-      // MBC control
-      case ( 0x0100 <= addr && addr < 0x8000 ):
+    if ( 0x0100 <= addr && addr < 0x8000 )
+    {
+      switch ( emu.cartridge_type )
       {
-        switch ( emu.cartridge_type )
-        {
-          case 0x01: emu.mbc1_reg( addr, val ); break;
-        }
-        return;
-      }
-
-      // Video RAM
-      case ( 0x8000 <= addr && addr < 0xA000 ):
-      {
-        emu.ram[ addr ] = val & 0xFF;
-        return;
-      }
-
-      // Switchable RAM bank
-      case ( 0xA000 <= addr && addr < 0xC000 ):
-      {
-        emu.ram[ addr ] = val & 0xFF;
-        return;
-      }
-
-      // Internal RAM
-      case ( 0xC000 <= addr && addr < 0xE000 ):
-      {
-        emu.ram[ addr ] = val & 0xFF;
-        if ( addr < 0xDE00 ) {
-          emu.ram[ addr + 0x2000 ] = val & 0xFF;
-        }
-        return;
-      }
-
-      // Echo of internal RAM
-      case ( 0xE000 <= addr && addr < 0xFE00 ):
-      {
-        emu.ram[ addr ] = val & 0xFF;
-        emu.ram[ addr - 0x2000 ] = val & 0xFF;
-        return;
-      }
-
-      // Sprite attrib memory
-      case ( 0xFE00 <= addr && addr < 0xFEA0 ):
-      {
-        emu.ram[ addr ] = val & 0xFF;
-        return;
-      }
-
-      // Possibly invalid addresses
-      case ( 0xFEA0 <= addr && addr < 0xFF00 ):
-      {
-        emu.ram[ addr ] = val & 0xFF;
-        return;
-      }
-
-      // IO ports
-      case ( 0xFF00 <= addr && addr < 0xFF80 ):
-      {
-        emu.io_write( addr, val );
-        return;
-      }
-
-      // High RAM area
-      case ( 0xFF80 <= addr && addr < 0xFFFF ):
-      {
-        emu.ram[ addr ] = val & 0xFF;
-        return;
-      }
-
-      // Enable interrupts register
-      case ( addr == 0xFFFF ):
-      {
-        emu.io_write( addr, val );
-        return;
+        case 0x01: emu.mbc1_reg( addr, val ); return;
       }
     }
 
-    throw new Error( "Reserved memory at 0x" + addr.toString( 16 ) );
+    if ( 0xC000 <= addr && addr < 0xE000 )
+    {
+      emu.ram[ addr + 0x2000 ] = val & 0xFF;
+    }
+
+    if ( 0xE000 <= addr && addr < 0xFE00 )
+    {
+      emu.ram[ addr - 0x2000 ] = val & 0xFF;
+    }
+
+    emu.ram[ addr ] = val & 0xFF;
   }
 
 
@@ -286,10 +172,10 @@
    */
   emu.io_write = function( addr, val )
   {
-    switch ( true )
+    switch ( addr )
     {
       // P1
-      case ( 0xFF00 == addr ):
+      case 0xFF00:
         if ( !( val & 0x20 ) ) {
           emu.keys = 0x2F;
           emu.keys &= emu.key_start  ? 0x07 : 0xFF;
@@ -312,33 +198,33 @@
         return;
 
       // DIV
-      case ( 0xFF04 == addr ):
+      case 0xFF04:
         emu.timer_div = 0x00;
         return;
 
       // TIMA
-      case ( 0xFF05 == addr ):
+      case 0xFF05:
         emu.timer_counter = val & 0xFF;
         return;
 
       // TMA
-      case ( 0xFF06 == addr ):
+      case 0xFF06:
         emu.timer_modulo = val & 0xFF;
         return;
 
       // TAC
-      case ( 0xFF07 == addr ):
+      case 0xFF07:
         emu.timer_enable = ( val & 0x04 ) != 0x00;
         emu.timer_clock = val & 0x03;
         return;
 
-      // NR x
-      case ( 0xFF10 <= addr && addr <= 0xFF26 ):
+      // NR26
+      case 0xFF26:
         emu.nr[ addr - 0xFF00 ] = val & 0xFF;
         return;
 
       // IF
-      case ( addr == 0xFF0F ):
+      case 0xFF0F:
         emu.ifPins   = ( val & 0x10 ) != 0x00;
         emu.ifSerial = ( val & 0x08 ) != 0x00;
         emu.ifTimer  = ( val & 0x04 ) != 0x00;
@@ -347,7 +233,7 @@
         return;
 
       // LCDC
-      case ( addr == 0xFF40 ):
+      case 0xFF40:
         emu.lcd_enable      = val & 0x80 ? true : false;
         emu.lcd_wnd_tilemap = val & 0x40 ? 0x9C00 : 0x9800;
         emu.lcd_wnd_display = val & 0x20 ? true : false;
@@ -359,7 +245,7 @@
         return;
 
       // STAT
-      case ( addr == 0xFF41 ):
+      case 0xFF41:
         emu.lcd_stat_lyc    = ( val & 0x40 ) != 0x00;
         emu.lcd_stat_oam    = ( val & 0x20 ) != 0x00;
         emu.lcd_stat_vblank = ( val & 0x10 ) != 0x00;
@@ -369,26 +255,26 @@
         return;
 
       // SCY
-      case ( addr == 0xFF42 ):
+      case 0xFF42:
         emu.lcd_scy = val & 0xFF;
         return;
 
       // SCX
-      case ( addr == 0xFF43 ):
+      case 0xFF43:
         emu.lcd_scx = val & 0xFF;
         return;
 
       // LY
-      case ( addr == 0xFF44 ):
+      case 0xFF44:
         throw "Erorr: Register LY is read only";
 
       // LYC
-      case ( addr == 0xFF45 ):
+      case 0xFF45:
         emu.lcd_lyc = val & 0xFF;
         return;
 
       // DMA
-      case ( addr == 0xFF46 ):
+      case 0xFF46:
         for ( var i = 0x00; i < 160; ++i )
         {
           emu.ram[ 0xFE00 + i ] = emu.ram[ ( val << 8 ) + i ];
@@ -396,7 +282,7 @@
         return;
 
       // BGP
-      case ( addr == 0xFF47 ):
+      case 0xFF47:
         emu.lcd_bg[ 0 ] = ( val & 0x03 ) >> 0;
         emu.lcd_bg[ 1 ] = ( val & 0x0C ) >> 2;
         emu.lcd_bg[ 2 ] = ( val & 0x30 ) >> 4;
@@ -404,7 +290,7 @@
         return;
 
       // OBP0
-      case ( addr == 0xFF48 ):
+      case 0xFF48:
         emu.lcd_obp0[ 0 ] = ( val & 0x03 ) >> 0;
         emu.lcd_obp0[ 1 ] = ( val & 0x0C ) >> 2;
         emu.lcd_obp0[ 2 ] = ( val & 0x30 ) >> 4;
@@ -412,7 +298,7 @@
         return;
 
       // OBP1
-      case ( addr == 0xFF49 ):
+      case 0xFF49:
         emu.lcd_obp1[ 0 ] = ( val & 0x03 ) >> 0;
         emu.lcd_obp1[ 1 ] = ( val & 0x0C ) >> 2;
         emu.lcd_obp1[ 2 ] = ( val & 0x30 ) >> 4;
@@ -420,24 +306,24 @@
         return;
 
       // WY
-      case ( addr == 0xFF4A ):
+      case 0xFF4A:
         emu.lcd_wy = val & 0xFF;
         return;
 
       // WX
-      case ( addr == 0xFF4B ):
+      case 0xFF4B:
         emu.lcd_wx = val & 0xFF;
         return;
 
       // DMG ROM enable
-      case ( addr == 0xFF50 ):
+      case 0xFF50:
         emu.lcd_ly      = 0x90;
         emu.nr[ 0x26 ]  = 0xF1;
         emu.boot_rom_enabled = false;
         return;
 
       // IE
-      case ( addr == 0xFFFF ):
+      case 0xFFFF:
         emu.iePins   = ( val & 0x10 ) != 0x00;
         emu.ieSerial = ( val & 0x08 ) != 0x00;
         emu.ieTimer  = ( val & 0x04 ) != 0x00;
@@ -455,36 +341,40 @@
   {
     var ret;
 
-    switch ( true )
+    switch ( addr )
     {
       // P1
-      case ( addr == 0xFF00 ):
+      case 0xFF00:
         return emu.keys;
 
+      // SC
+      case 0xFF02:
+        return 0x00;
+
       // DIV
-      case ( 0xFF04 == addr ):
+      case 0xFF04:
         return emu.timer_div;
 
       // TIMA
-      case ( 0xFF05 == addr ):
+      case 0xFF05:
         return emu.timer_counter;
 
       // TMA
-      case ( 0xFF06 == addr ):
+      case 0xFF06:
         return emu.timer_modulo;
 
       // TAC
-      case ( 0xFF07 == addr ):
+      case 0xFF07:
         ret |= emu.timer_enable ? 0x40 : 0x00;
         ret |= emu.timer_clock & 0x03;
         return ret;
 
-      // NR x
-      case ( 0xFF10 <= addr && addr <= 0xFF26 ):
+      // NR26
+      case 0xFF26:
         return emu.nr[ addr - 0xFF00 ];
 
       // IF
-      case ( addr == 0xFF0F ):
+      case 0xFF0F:
         ret |= emu.ifPins   ? 0x10 : 0x00;
         ret |= emu.ifSerial ? 0x08 : 0x00;
         ret |= emu.ifTimer  ? 0x04 : 0x00;
@@ -493,7 +383,7 @@
         return ret;
 
       // LCDC
-      case ( addr == 0xFF40 ):
+      case 0xFF40:
         ret |= emu.lcd_enable                ? 0x80 : 0x00;
         ret |= emu.lcd_wnd_tilemap == 0x9C00 ? 0x40 : 0x00;
         ret |= emu.lcd_wnd_display           ? 0x20 : 0x00;
@@ -505,7 +395,7 @@
         return ret;
 
       // STAT
-      case ( addr == 0xFF41 ):
+      case 0xFF41:
         ret |= emu.lcd_stat_lyc    ? 0x40 : 0x00;
         ret |= emu.lcd_stat_oam    ? 0x20 : 0x00;
         ret |= emu.lcd_stat_vblank ? 0x10 : 0x00;
@@ -515,27 +405,27 @@
         return ret;
 
       // SCY
-      case ( addr == 0xFF42 ):
+      case 0xFF42:
         return emu.lcd_scy;
 
       // SCX
-      case ( addr == 0xFF43 ):
+      case 0xFF43:
         return emu.lcd_scx;
 
       // LY
-      case ( addr == 0xFF44 ):
+      case 0xFF44:
         return emu.lcd_ly;
 
       // LYC
-      case ( addr == 0xFF45 ):
+      case 0xFF45:
         return emu.lcd_lyc;
 
       // DMA
-      case ( addr == 0xFF46 ):
+      case 0xFF46:
         throw "Error: Register DMA is write only";
 
       // BGP
-      case ( addr == 0xFF47 ):
+      case 0xFF47:
         ret |= emu.lcd_bg[ 0 ] << 0;
         ret |= emu.lcd_bg[ 1 ] << 2;
         ret |= emu.lcd_bg[ 2 ] << 4;
@@ -543,7 +433,7 @@
         return ret;
 
       // OBP0
-      case ( addr == 0xFF48 ):
+      case 0xFF48:
         ret |= emu.lcd_obp0[ 0 ] << 0;
         ret |= emu.lcd_obp0[ 1 ] << 2;
         ret |= emu.lcd_obp0[ 2 ] << 4;
@@ -551,7 +441,7 @@
         return ret;
 
       // OBP1
-      case ( addr == 0xFF49 ):
+      case 0xFF49:
         ret |= emu.lcd_obp1[ 0 ] << 0;
         ret |= emu.lcd_obp1[ 1 ] << 2;
         ret |= emu.lcd_obp1[ 2 ] << 4;
@@ -559,15 +449,15 @@
         return ret;
 
       // WY
-      case ( addr == 0xFF4A ):
+      case 0xFF4A:
         return emu.lcd_wy;
 
       // WX
-      case ( addr == 0xFF4B ):
+      case 0xFF4B:
         return emu.lcd_wx;
 
       // IE
-      case ( addr == 0xFFFF ):
+      case 0xFFFF:
         ret |= emu.iePins   ? 0x10 : 0x00;
         ret |= emu.ieSerial ? 0x08 : 0x00;
         ret |= emu.ieTimer  ? 0x04 : 0x00;
