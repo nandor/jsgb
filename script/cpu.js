@@ -356,120 +356,107 @@
   /**
    * 8 bit rotations
    */
-  var alu_rot_8 = function( y, z )
+  var alu_rot_8 = function( y, r )
   {
-    var r, c;
+    var c;
 
     switch ( y )
     {
       // RLC n
       case 0x0:
-        r = get_r( z );
         c = ( r & 0x80 ) >> 7;
 
         emu.cf = ( r & 0x80 ) != 0x00;
         emu.nf = false;
         emu.hf = false;
-        r = ( ( r << 1 ) | c ) & 0xFF;
-        emu.zf = r == 0x00;
 
-        set_r( z, r );
-        return;
+        r = ( ( r << 1 ) | c ) & 0xFF;
+
+        emu.zf = r == 0x00;
+        return r;
 
       // RRC n
       case 0x1:
-        r = get_r( z );
         c = ( r & 0x01 ) << 7;
 
         emu.cf = ( r & 0x01 ) != 0x00;
         emu.nf = false;
         emu.hf = false;
-        r = ( ( r >> 1 ) | c ) & 0xFF;
-        emu.zf = r == 0x00;
 
-        set_r( z, r );
-        return;
+        r = ( ( r >> 1 ) | c ) & 0xFF;
+
+        emu.zf = r == 0x00;
+        return r;
 
       // RL n
       case 0x2:
-        r = get_r( z );
         c = emu.cf ? 0x01 : 0x00;
 
         emu.cf = ( r & 0x80 ) != 0x00;
         emu.nf = false;
         emu.hf = false;
-        r = ( ( r << 1 ) | c ) & 0xFF;
-        emu.zf = r == 0x00;
 
-        set_r( z, r );
-        return;
+        r = ( ( r << 1 ) | c ) & 0xFF;
+
+        emu.zf = r == 0x00;
+        return r;
 
       // RR n
       case 0x3:
-        r = get_r( z );
         c = emu.cf ? 0x80 : 0x00;
 
         emu.cf = ( r & 0x01 ) != 0x00;
         emu.nf = false;
         emu.hf = false;
-        r = ( ( r >> 1 ) | c ) & 0xFF;
-        emu.zf = r == 0x00;
 
-        set_r( z, r );
-        return;
+        r = ( ( r >> 1 ) | c ) & 0xFF;
+
+        emu.zf = r == 0x00;
+        return r;
 
       // SLA n
       case 0x4:
-        r = get_r( z );
-
         emu.cf = ( r & 0x80 ) != 0x00;
         emu.nf = false;
         emu.hf = false;
-        r = ( r << 1 ) & 0xFF;
-        emu.zf = r == 0x00;
 
-        set_r( z, r );
-        return;
+        r = ( r << 1 ) & 0xFF;
+
+        emu.zf = r == 0x00;
+        return r;
 
       // SRA n
       case 0x5:
-        r = get_r( z );
-
         emu.cf = ( r & 0x1 ) != 0x00;
         emu.nf = false;
         emu.hf = false;
-        r = ( ( r >> 1 ) | ( r & 0x80 ) ) & 0xFF;
-        emu.zf = r == 0x00;
 
-        set_r( z, r );
-        return;
+        r = ( ( r >> 1 ) | ( r & 0x80 ) ) & 0xFF;
+
+        emu.zf = r == 0x00;
+        return r;
 
       // SWAP
       case 0x6:
-        r = get_r( z );
-
-        emu.zf = r == 0x00;
         emu.cf = false;
         emu.nf = false;
         emu.hf = false;
 
         r = ( ( r & 0x0F ) << 4 ) | ( ( r & 0xF0 ) >> 4 );
 
-        set_r( z, r );
-        return;
+        emu.zf = r == 0x00;
+        return r;
 
       // SRL
       case 0x7:
-        r = get_r( z );
-
         emu.cf = ( r & 0x01 ) != 0x00;
         emu.nf = false;
         emu.hf = false;
-        r = ( r >> 1 ) & 0xFF;
-        emu.zf = r == 0x00;
 
-        set_r( z, r );
-        return;
+        r = ( r >> 1 ) & 0xFF;
+
+        emu.zf = r == 0x00;
+        return r;
     }
   }
 
@@ -725,13 +712,24 @@
         x  = ( op & 0xC0 ) >> 6;
         y  = ( op & 0x38 ) >> 3;
         z  = ( op & 7 );
-        emu.inc_cycles( z == 0x6 ? ( x == 0x1 ? 12 : 16 ) : 8 );
+
+        if ( z == 0x6 )
+        {
+          emu.inc_cycles( x == 0x1 ? 8 : 12 );
+          r = emu.get_byte( emu.hl );
+          emu.inc_cycles( 4 );
+        }
+        else
+        {
+          emu.inc_cycles( 8 );
+          r = get_r( z );
+        }
 
         switch ( x )
         {
           // rot[ y ] r[ z ]
           case 0x0:
-            alu_rot_8( y, z );
+            set_r( z, alu_rot_8( y, r ) );
             return;
 
           // BIT y, r[ z ]
@@ -743,13 +741,13 @@
 
           // RST y, r[ z ]
           case 0x2:
-            set_r( z, get_r( z ) & ( ~ ( 1 << y ) ) );
+            set_r( z, r & ( ~ ( 1 << y ) ) );
             return;
 
           // SET y, r[ z ]
           case 0x3:
-            set_r( z, get_r( z ) | ( 1 << y ) );
-            return;
+             set_r( z, r | ( 1 << y ) );
+             return;
         }
 
         return;
@@ -872,8 +870,17 @@
 
       // INC r[p]
       case ( ( op & 0xC7 ) == 0x04 ):
-        emu.inc_cycles( y == 0x6 ? 12 : 4 );
-        r = get_r( y );
+        if ( y == 0x6 )
+        {
+          emu.inc_cycles( 8 );
+          r = emu.get_byte( emu.hl );
+          emu.inc_cycles( 4 );
+        }
+        else
+        {
+          emu.inc_cycles( 4 );
+          r = get_r( y );
+        }
 
         r = ( r + 1 ) & 0xFF;
 
@@ -886,8 +893,17 @@
 
       // DEC r[p]
       case ( ( op & 0xC7 ) == 0x05 ):
-        emu.inc_cycles( y == 0x6 ? 12 : 4 );
-        r = get_r( y );
+        if ( y == 0x6 )
+        {
+          emu.inc_cycles( 8 );
+          r = emu.get_byte( emu.hl );
+          emu.inc_cycles( 4 );
+        }
+        else
+        {
+          emu.inc_cycles( 4 );
+          r = get_r( y );
+        }
 
         r = ( r - 1 ) & 0xFF;
 
@@ -1011,6 +1027,7 @@
           emu.inc_cycles( 4 );
           emu.pc = u16;
         }
+
         return;
 
       // CALL cc[y], nn
@@ -1024,6 +1041,7 @@
           emu.set_word( emu.sp, emu.pc & 0xFFFF );
           emu.pc = u16;
         }
+
         return;
 
       default:
@@ -1092,8 +1110,6 @@
         emu.pc = 0x0060;
       }
     }
-
-    emu.timer_step( );
 
     // Run an instruction
     if ( emu.halted )

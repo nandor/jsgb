@@ -24,53 +24,68 @@
    */
   emu.inc_cycles = function( n )
   {
+    if ( n <= 0 ) {
+      return;
+    }
+
     emu.cpu_cycles     += n;
     emu.gpu_cycles     += n;
     emu.divider_cycles += n;
     emu.counter_cycles += n;
+
+    emu.update_counter( );
+    emu.update_divider( );
   }
 
   /**
-   * Updates timer registers & fires interrupts
+   * Returns the timer counter
    */
-  emu.timer_step = function( )
+  emu.update_counter = function( )
   {
     var cycles = 0;
 
-    if ( emu.timer_enable )
+    if ( !emu.timer_enable )
     {
-      switch ( emu.timer_clock )
-      {
-        // 4.096 KHz
-        case 0x00: cycles = 1024; break;
-
-        // 262.144 KHz
-        case 0x01: cycles = 16;  break;
-
-        // 65.535 KHz
-        case 0x02: cycles = 64;  break;
-
-        // 16.384 KHz
-        case 0x03: cycles = 256; break;
-      }
-
-      // Increment the timer counter
-      while ( emu.counter_cycles >= cycles )
-      {
-        emu.counter_cycles -= cycles;
-        emu.timer_counter++;
-        if ( emu.timer_counter > 0xFF ) {
-          emu.ifTimer = true;
-          emu.timer_counter = emu.timer_modulo;
-        }
-      }
+      return;
     }
 
-    // Increment the divider
-    if ( emu.divider_cycles >= 256 ) {
+    // Select the timer frequency
+    switch ( emu.timer_clock )
+    {
+      // 4.096 KHz
+      case 0x00: cycles = 1024; break;
+
+      // 262.144 KHz
+      case 0x01: cycles = 16;  break;
+
+      // 65.535 KHz
+      case 0x02: cycles = 64;  break;
+
+      // 16.384 KHz
+      case 0x03: cycles = 256; break;
+    }
+
+    // Increment the timer counter
+    while ( emu.counter_cycles >= cycles )
+    {
+      emu.counter_cycles -= cycles;
+      emu.timer_counter++;
+
+      if ( emu.timer_counter > 0xFF ) {
+        emu.ifTimer = true;
+        emu.timer_counter = emu.timer_modulo;
+      }
+    }
+  }
+
+  /**
+   * Updates the divider register
+   */
+  emu.update_divider = function( )
+  {
+    while ( emu.divider_cycles >= 256 ) {
       emu.divider_cycles -= 256;
       emu.timer_divider = ( emu.timer_divider + 1 ) & 0xFF;
     }
   }
-
 } ) ( this.emu = this.emu || { } );

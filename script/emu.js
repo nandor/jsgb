@@ -211,6 +211,6 @@
 
     // Load the rom
     emu.reset( );
-    emu.load_rom( 'cpu_instrs.gb' , emu.loop );
+    emu.load_rom( 'pb.gb' , emu.loop );
   } );
 } ) ( this.emu = this.emu || { } );

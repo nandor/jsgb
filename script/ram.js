@@ -11,9 +11,19 @@
   emu.rom              = null;
   emu.ram              = new Uint8Array( 0x10000 );
   emu.nr               = new Uint8Array( 52 );
-  emu.rom_bank         = 0x01;
-  emu.rom_ram          = false;
-  emu.rom_banking      = true;
+  emu.ram_bank         = [ new Uint8Array( 0x4000 )
+                         , new Uint8Array( 0x4000 )
+                         , new Uint8Array( 0x4000 )
+                         , new Uint8Array( 0x4000 )
+                         ];
+
+  // MBC1
+  emu.mbc1_bank        = 0x01;
+  emu.mbc1_ram         = false;
+  emu.mbc1_banking     = true;
+
+  // MBC3
+  emu.mbc3_bank        = 0x00;
 
   // Keyboard
   emu.keys             = 0xFF;
@@ -149,7 +159,12 @@
     {
       switch ( emu.cartridge_type )
       {
-        case 0x01: emu.mbc1_reg( addr, val ); return;
+        case 0x01: case 0x02: case 0x03:
+          emu.mbc1_reg( addr, val );
+          return;
+        case 0x12: case 0x13:
+          emu.mbc3_reg( addr, val );
+          return;
       }
     }
 
@@ -214,6 +229,7 @@
 
       // TAC
       case 0xFF07:
+        emu.counter_cycles = 0;
         emu.timer_enable = ( val & 0x04 ) != 0x00;
         emu.timer_clock = val & 0x03;
         return;
@@ -237,7 +253,7 @@
         emu.lcd_enable      = val & 0x80 ? true : false;
         emu.lcd_wnd_tilemap = val & 0x40 ? 0x9C00 : 0x9800;
         emu.lcd_wnd_display = val & 0x20 ? true : false;
-        emu.lcd_tile_data   = val & 0x10 ? 0x8000 : 0x8800;
+        emu.lcd_tile_data   = val & 0x10 ? 0x8000 : 0x9000;
         emu.lcd_bg_tilemap  = val & 0x08 ? 0x9C00 : 0x9800;
         emu.lcd_obj_size    = val & 0x04 ? 16 : 8;
         emu.lcd_obj_display = val & 0x02 ? true : false;
@@ -353,7 +369,7 @@
 
       // DIV
       case 0xFF04:
-        return emu.timer_div;
+        return emu.timer_divider;
 
       // TIMA
       case 0xFF05:
@@ -472,31 +488,78 @@
   };
 
   /**
-   * ROM registers
+   * MBC1 controller
    */
   emu.mbc1_reg = function( addr, val )
   {
     var tmp;
 
-    switch ( true )
+    if ( addr < 0x2000 )
     {
-      case ( 0x0000 <= addr && addr < 0x2000 ):
+      emu.mbc1_ram = val == 0x0A;
+      return;
+    }
+
+    if ( addr < 0x4000 )
+    {
+      tmp = val & 0x1F;
+      tmp = tmp ? tmp : 0x01;
+      emu.mbc1_bank = ( emu.mbc1_bank & 0xE0 ) | tmp;
+
+      for ( var idx = 0x4000; idx < 0x8000; ++idx )
       {
-        emu.rom_ram = val == 0x0A;
-        return;
+        emu.ram[ idx ] = emu.rom.data[ ( emu.mbc1_bank - 1 ) * 0x4000 + idx ];
       }
-      case ( 0x2000 <= addr && addr < 0x4000 ):
+      return;
+    }
+
+    if ( addr < 0x6000 )
+    {
+      console.log( "mbc1: unimplemented " + addr.toString( 16 ) + " " + val.toString( 16 ) );
+    }
+
+    if ( addr < 0x8000 )
+    {
+      console.log( "mbc1: unimplemented " + addr.toString( 16 ) + " " + val.toString( 16 ) );
+    }
+  }
+
+  /**
+   * MBC3 controller
+   */
+  emu.mbc3_reg = function( addr, val )
+  {
+    var tmp;
+    if ( addr < 0x2000 )
+    {
+      emu.mbc3_ram = val == 0x0A;
+      return;
+    }
+
+    if ( addr < 0x4000 )
+    {
+      emu.mbc3_bank = val & 0x7F;
+      if ( emu.mbc3_bank == 0x00 )
       {
-        tmp = val & 0x1F;
-        tmp = tmp ? tmp : 0x01;
-        emu.rom_bank = ( emu.rom_bank & 0xE0 ) | tmp;
-        return;
+        emu.mbc3_bank = 0x01;
       }
-      default:
+
+      for ( var idx = 0x4000; idx < 0x8000; ++idx )
       {
-        console.log( "MBC1: " + addr.toString( 16 ) + " " + val.toString( 16 ) );
-        console.log( "PC: " + emu.pc.toString( 16 ) );
+        emu.ram[ idx ] = emu.rom.data[ ( emu.mbc3_bank - 1 ) * 0x4000 + idx ];
       }
+
+      return;
+    }
+
+    if ( addr < 0x6000 )
+    {
+      console.log( "mbc3: unimplemented " + addr.toString( 16 ) + " " + val.toString( 16 ) );
+    }
+
+    if ( addr < 0x8000 )
+    {
+      console.log( "mbc3: unimplemented " + addr.toString( 16 ) + " " + val.toString( 16 ) );
     }
   }
 } ) ( this.emu = this.emu || { } );
