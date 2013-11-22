@@ -47,10 +47,10 @@
    */
   emu.reset = function( )
   {
-    for ( var i = 0; i < emu.ram.length; ++i )
+    /*for ( var i = 0; i < emu.ram.length; ++i )
     {
       emu.ram[ i ] = ( Math.random( ) * 255 ) & 0xFF;
-    }
+    }*/
   }
 
   /**
@@ -211,6 +211,6 @@
 
     // Load the rom
     emu.reset( );
-    emu.load_rom( 'Tetris.gb' , emu.loop );
+    emu.load_rom( 'cpu_instrs.gb' , emu.loop );
   } );
 } ) ( this.emu = this.emu || { } );

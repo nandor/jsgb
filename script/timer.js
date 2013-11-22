@@ -27,11 +27,7 @@
     emu.cpu_cycles     += n;
     emu.gpu_cycles     += n;
     emu.divider_cycles += n;
-
-    if ( emu.timer_enable )
-    {
-      emu.counter_cycles += n;
-    }
+    emu.counter_cycles += n;
   }
 
   /**
@@ -46,37 +42,33 @@
       switch ( emu.timer_clock )
       {
         // 4.096 KHz
-        case 0x00: cycles = 976; break;
+        case 0x00: cycles = 1024; break;
 
         // 262.144 KHz
-        case 0x01: cycles = 15;  break;
+        case 0x01: cycles = 16;  break;
 
         // 65.535 KHz
-        case 0x02: cycles = 61;  break;
+        case 0x02: cycles = 64;  break;
 
         // 16.384 KHz
-        case 0x03: cycles = 244; break;
+        case 0x03: cycles = 256; break;
       }
 
       // Increment the timer counter
-      if ( emu.counter_cycles > cycles )
+      while ( emu.counter_cycles >= cycles )
       {
-        var inc;
-
-        inc = Math.floor( emu.counter_cycles / cycles );
-        emu.counter_cycles %= cycles;
-
-        emu.timer_counter += inc;
-        while ( emu.timer_counter > 0xFF ) {
+        emu.counter_cycles -= cycles;
+        emu.timer_counter++;
+        if ( emu.timer_counter > 0xFF ) {
           emu.ifTimer = true;
-          emu.timer_counter = emu.timer_modulo + ( emu.timer_counter - 0xFF );
+          emu.timer_counter = emu.timer_modulo;
         }
       }
     }
 
     // Increment the divider
-    if ( emu.divider_cycles > 244 ) {
-      emu.divider_cycles -= 244;
+    if ( emu.divider_cycles >= 256 ) {
+      emu.divider_cycles -= 256;
       emu.timer_divider = ( emu.timer_divider + 1 ) & 0xFF;
     }
   }

@@ -490,12 +490,6 @@
         tmp = val & 0x1F;
         tmp = tmp ? tmp : 0x01;
         emu.rom_bank = ( emu.rom_bank & 0xE0 ) | tmp;
-
-        for ( var idx = 0x4000; idx < 0x8000; ++idx )
-        {
-          emu.ram[ idx ] = emu.rom.data[ ( emu.rom_bank - 1 ) * 0x4000 + idx ];
-        }
-
         return;
       }
       default:

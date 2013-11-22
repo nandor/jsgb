@@ -452,7 +452,9 @@
         emu.cf = false;
         emu.nf = false;
         emu.hf = false;
+
         r = ( ( r & 0x0F ) << 4 ) | ( ( r & 0xF0 ) >> 4 );
+
         set_r( z, r );
         return;
 
@@ -546,8 +548,6 @@
 
       // STOP
       case ( op == 0x10 ):
-        console.log( emu.pc.toString( 16 ) );
-
         emu.inc_cycles( 4 );
         emu.pc += 1;
         emu.stopped = true;
@@ -595,7 +595,7 @@
 
       // JR n
       case ( op == 0x18 ):
-        emu.inc_cycles( 8 );
+        emu.inc_cycles( 12 );
         emu.pc += 1;
         emu.pc = ( emu.pc + s8 ) & 0xFFFF;
         return;
@@ -700,7 +700,7 @@
 
       // CALL nn
       case ( op == 0xCD ):
-        emu.inc_cycles( 12 );
+        emu.inc_cycles( 24 );
         emu.sp = ( emu.sp - 2 ) & 0xFFFF;
         emu.set_word( emu.sp, ( emu.pc + 2 ) & 0xFFFF );
         emu.pc = u16;
@@ -708,13 +708,13 @@
 
       // JP nn
       case ( op == 0xC3 ):
-        emu.inc_cycles( 12 );
+        emu.inc_cycles( 16 );
         emu.pc = u16;
         return;
 
       // RET
       case ( op == 0xC9 ):
-        emu.inc_cycles( 8 );
+        emu.inc_cycles( 16 );
         emu.pc = emu.get_word( emu.sp );
         emu.sp = ( emu.sp + 2 ) & 0xFFFF;
         return;
@@ -725,11 +725,11 @@
         x  = ( op & 0xC0 ) >> 6;
         y  = ( op & 0x38 ) >> 3;
         z  = ( op & 7 );
-        emu.inc_cycles( z == 0x6 ? 16 : 8 );
+        emu.inc_cycles( z == 0x6 ? ( x == 0x1 ? 12 : 16 ) : 8 );
 
         switch ( x )
         {
-          // rot[y] r[z]
+          // rot[ y ] r[ z ]
           case 0x0:
             alu_rot_8( y, z );
             return;
@@ -763,7 +763,7 @@
 
       // LD (c), a
       case ( op == 0xE2 ):
-        emu.inc_cycles( 12 );
+        emu.inc_cycles( 8 );
         emu.set_byte( 0xFF00 + emu.c, emu.a );
         return;
 
@@ -798,7 +798,7 @@
 
       // RETI
       case ( op == 0xD9 ):
-        emu.inc_cycles( 8 );
+        emu.inc_cycles( 16 );
         emu.pc = emu.get_word( emu.sp );
         emu.sp = ( emu.sp + 2 ) & 0xFFFF;
         emu.ime = true;
@@ -813,7 +813,7 @@
 
       // LD a, (c)
       case ( op == 0xF2 ):
-        emu.inc_cycles( 12 );
+        emu.inc_cycles( 8 );
         emu.a = emu.get_byte( 0xFF00 + emu.c );
         return;
 
@@ -914,7 +914,7 @@
 
       // RST y * 8
       case ( ( op & 0xC7 ) == 0xC7 ):
-        emu.inc_cycles( 32 );
+        emu.inc_cycles( 16 );
         emu.sp = ( emu.sp - 2 ) & 0xFFFF;
         emu.set_word( emu.sp, emu.pc );
         emu.pc = y << 3;
@@ -1052,7 +1052,7 @@
         emu.ime = false;
         emu.ifVBlank = false;
 
-        emu.inc_cycles( 16 );
+        emu.inc_cycles( 20 );
         emu.sp = ( emu.sp - 2 ) & 0xFFFF;
         emu.set_word( emu.sp, emu.pc );
         emu.pc = 0x0040;
@@ -1069,7 +1069,7 @@
         emu.ime = false;
         emu.ifTimer = false;
 
-        emu.inc_cycles( 16 );
+        emu.inc_cycles( 20 );
         emu.sp = ( emu.sp - 2 ) & 0xFFFF;
         emu.set_word( emu.sp, emu.pc );
         emu.pc = 0x0050;
@@ -1086,12 +1086,14 @@
         emu.ime = false;
         emu.ifPins = false;
 
-        emu.inc_cycles( 16 );
+        emu.inc_cycles( 20 );
         emu.sp = ( emu.sp - 2 ) & 0xFFFF;
         emu.set_word( emu.sp, emu.pc );
         emu.pc = 0x0060;
       }
     }
+
+    emu.timer_step( );
 
     // Run an instruction
     if ( emu.halted )
@@ -1102,8 +1104,6 @@
     {
       instr( emu.get_byte( emu.pc++ ) );
     }
-
-    emu.timer_step( );
 
     // HBlank
     if ( emu.gpu_cycles >= 456 )
