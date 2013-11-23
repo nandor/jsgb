@@ -7,36 +7,9 @@
 ( function( emu )
 {
   // Internal memory
-  emu.cartridge_type   = 0x01;
-  emu.rom              = null;
+  emu.cart             = null;
   emu.ram              = new Uint8Array( 0x10000 );
-  emu.nr               = new Uint8Array( 52 );
-  emu.ram_bank         = [ new Uint8Array( 0x4000 )
-                         , new Uint8Array( 0x4000 )
-                         , new Uint8Array( 0x4000 )
-                         , new Uint8Array( 0x4000 )
-                         ];
-
-  // MBC1
-  emu.mbc1_bank        = 0x01;
-  emu.mbc1_ram         = false;
-  emu.mbc1_banking     = true;
-
-  // MBC3
-  emu.mbc3_bank        = 0x00;
-
-  // Keyboard
-  emu.keys             = 0xFF;
-  emu.key_start        = false;
-  emu.key_select       = false;
-  emu.key_a            = false;
-  emu.key_b            = false;
-  emu.key_left         = false;
-  emu.key_right        = false;
-  emu.key_up           = false;
-  emu.key_down         = false;
-
-  // DMG
+  emu.nr               = new Uint8Array( 0x100 );
   emu.boot_rom_enabled = true;
 
   // Bootstrap rom, source:
@@ -83,19 +56,20 @@
   emu.read_rom = function( rom )
   {
     // Choose an appropiate cartridge controller
-    emu.cartridge_type = rom.cartridge_type;
-    if ( emu.cartridge_type == 0x00 ) {
-      emu.cartridge_type = 0x01;
+    if ( rom.has_mbc3 ) {
+      emu.cart = new emu.MBC3( rom );
+    } else if ( rom.has_mbc2 ) {
+      emu.cart = new emu.MBC2( rom );
+    } else {
+      emu.cart = new emu.MBC1( rom );
     }
 
     // Load the first two banks
-    emu.rom = rom;
     for ( var i = 0; i < 0x8000; ++i )
     {
       emu.ram[ i ] = rom.data[ i ];
     }
   }
-
 
   /**
    * Retrieves a word from memory
@@ -125,17 +99,43 @@
    */
   emu.get_byte = function( addr )
   {
-    if ( addr < 0x100 && emu.boot_rom_enabled )
+    switch ( addr & 0xF000 )
     {
-      return emu.boot_rom[ addr ];
+      case 0x0000:
+      {
+        if ( addr < 0x100 && emu.boot_rom_enabled )
+        {
+          return emu.boot_rom[ addr ];
+        }
+        else
+        {
+          return emu.ram[ addr ];
+        }
+      }
+      case 0x4000: case 0x5000: case 0x6000: case 0x7000:
+      {
+        return emu.cart.get_byte( addr );
+      }
+      case 0xA000: case 0xB000:
+      {
+        return emu.cart.get_byte( addr );
+      }
+      case 0xF000:
+      {
+        if ( 0xFF00 <= addr && addr < 0xFF80 || addr == 0xFFFF )
+        {
+          return emu.io_read( addr );
+        }
+        else
+        {
+          return emu.ram[ addr ];
+        }
+      }
+      default:
+      {
+        return emu.ram[ addr ];
+      }
     }
-
-    if ( 0xFF00 <= addr && addr < 0xFF80 || addr == 0xFFFF )
-    {
-      return emu.io_read( addr );
-    }
-
-    return emu.ram[ addr ];
   }
 
   /**
@@ -157,15 +157,14 @@
 
     if ( 0x0100 <= addr && addr < 0x8000 )
     {
-      switch ( emu.cartridge_type )
-      {
-        case 0x01: case 0x02: case 0x03:
-          emu.mbc1_reg( addr, val );
-          return;
-        case 0x12: case 0x13:
-          emu.mbc3_reg( addr, val );
-          return;
-      }
+      emu.cart.set_byte( addr, val );
+      return;
+    }
+
+    if ( 0xA000 <= addr && addr < 0xC000 )
+    {
+      emu.cart.set_byte( addr, val );
+      return;
     }
 
     if ( 0xC000 <= addr && addr < 0xE000 )
@@ -486,80 +485,4 @@
         return ret;
     }
   };
-
-  /**
-   * MBC1 controller
-   */
-  emu.mbc1_reg = function( addr, val )
-  {
-    var tmp;
-
-    if ( addr < 0x2000 )
-    {
-      emu.mbc1_ram = val == 0x0A;
-      return;
-    }
-
-    if ( addr < 0x4000 )
-    {
-      tmp = val & 0x1F;
-      tmp = tmp ? tmp : 0x01;
-      emu.mbc1_bank = ( emu.mbc1_bank & 0xE0 ) | tmp;
-
-      for ( var idx = 0x4000; idx < 0x8000; ++idx )
-      {
-        emu.ram[ idx ] = emu.rom.data[ ( emu.mbc1_bank - 1 ) * 0x4000 + idx ];
-      }
-      return;
-    }
-
-    if ( addr < 0x6000 )
-    {
-      console.log( "mbc1: unimplemented " + addr.toString( 16 ) + " " + val.toString( 16 ) );
-    }
-
-    if ( addr < 0x8000 )
-    {
-      console.log( "mbc1: unimplemented " + addr.toString( 16 ) + " " + val.toString( 16 ) );
-    }
-  }
-
-  /**
-   * MBC3 controller
-   */
-  emu.mbc3_reg = function( addr, val )
-  {
-    var tmp;
-    if ( addr < 0x2000 )
-    {
-      emu.mbc3_ram = val == 0x0A;
-      return;
-    }
-
-    if ( addr < 0x4000 )
-    {
-      emu.mbc3_bank = val & 0x7F;
-      if ( emu.mbc3_bank == 0x00 )
-      {
-        emu.mbc3_bank = 0x01;
-      }
-
-      for ( var idx = 0x4000; idx < 0x8000; ++idx )
-      {
-        emu.ram[ idx ] = emu.rom.data[ ( emu.mbc3_bank - 1 ) * 0x4000 + idx ];
-      }
-
-      return;
-    }
-
-    if ( addr < 0x6000 )
-    {
-      console.log( "mbc3: unimplemented " + addr.toString( 16 ) + " " + val.toString( 16 ) );
-    }
-
-    if ( addr < 0x8000 )
-    {
-      console.log( "mbc3: unimplemented " + addr.toString( 16 ) + " " + val.toString( 16 ) );
-    }
-  }
 } ) ( this.emu = this.emu || { } );

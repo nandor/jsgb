@@ -9,13 +9,21 @@
 
     <link rel = "stylesheet" type = "text/css" href = "style/style.css" />
 
+    <!-- Dependencies -->
     <script type = "text/javascript" src = "lib/jquery.js" > </script>
+
+    <!-- Emulator Core -->
     <script type = "text/javascript" src = "script/cpu.js" > </script>
     <script type = "text/javascript" src = "script/ram.js" > </script>
     <script type = "text/javascript" src = "script/rom.js" > </script>
     <script type = "text/javascript" src = "script/lcd.js" > </script>
     <script type = "text/javascript" src = "script/emu.js" > </script>
     <script type = "text/javascript" src = "script/timer.js" > </script>
+
+    <!-- Cartridge controllers -->
+    <script type = "text/javascript" src = "script/cart/mbc1.js" > </script>
+    <script type = "text/javascript" src = "script/cart/mbc2.js" > </script>
+    <script type = "text/javascript" src = "script/cart/mbc3.js" > </script>
   </head>
   <body>
     <div id = "holder">
@@ -23,39 +31,6 @@
       <div id = "control">
         <input type = "button" value = "Start" id = "btn-start" />
         <input type = "button" value = "Stop"  id = "btn-stop" />
-        <input type = "button" value = "Step"  id = "btn-step" />
-        <table id = "dbg" >
-          <tr>
-            <td>A</td><td id = "dbg-reg-a"></td>
-            <td>F</td><td id = "dbg-reg-f"></td>
-            <td>LY</td><td id = "dbg-reg-ly"></td>
-          </tr>
-          <tr>
-            <td>B</td><td id = "dbg-reg-b"></td>
-            <td>C</td><td id = "dbg-reg-c"></td>
-            <td></td><td></td>
-          </tr>
-          <tr>
-            <td>D</td><td id = "dbg-reg-d"></td>
-            <td>E</td><td id = "dbg-reg-e"></td>
-            <td></td><td></td>
-          </tr>
-          <tr>
-            <td>H</td><td id = "dbg-reg-h"></td>
-            <td>L</td><td id = "dbg-reg-l"></td>
-            <td></td><td></td>
-          </tr>
-          <tr>
-            <td colspan = "2">SP</td>
-            <td colspan = "2" id = "dbg-reg-sp"></td>
-            <td></td><td></td>
-          </tr>
-          <tr>
-            <td colspan = "2">PC</td>
-            <td colspan = "2" id = "dbg-reg-pc"></td>
-            <td></td><td></td>
-          </tr>
-        </table>
       </div>
     </div>
   </body>

@@ -4,54 +4,24 @@
  * (C) 2013 Licker Nandor. All rights reserved.
  */
 
-( function ( emu ) {
+( function( emu )
+{
+  // Display
   emu.canvas   = null;
   emu.ctx      = null;
   emu.ctx_data = null;
   emu.vram     = null;
 
-  /**
-   * Converts a number to hex and pads it with leading zeros
-   */
-  function hex( x, n )
-  {
-    var s;
-
-    s = x.toString( 16 );
-    while ( s.length < n )
-    {
-      s = "0" + s;
-    }
-
-    return "0x" + s;
-  }
-
-  /**
-   * Converts a number to binary and pads it with leading zeros
-   */
-  function bin( x, n )
-  {
-    var s;
-
-    s = x.toString( 2 );
-    while ( s.length < n )
-    {
-      s = "0" + s;
-    }
-
-    return "0b" + s;
-  }
-
-  /**
-   * Reset the CPU
-   */
-  emu.reset = function( )
-  {
-    /*for ( var i = 0; i < emu.ram.length; ++i )
-    {
-      emu.ram[ i ] = ( Math.random( ) * 255 ) & 0xFF;
-    }*/
-  }
+  // Keyboard
+  emu.keys             = 0xFF;
+  emu.key_start        = false;
+  emu.key_select       = false;
+  emu.key_a            = false;
+  emu.key_b            = false;
+  emu.key_left         = false;
+  emu.key_right        = false;
+  emu.key_up           = false;
+  emu.key_down         = false;
 
   /**
    * Loads a rom file
@@ -66,7 +36,7 @@
 
     req.onload = function( evt )
     {
-      emu.read_rom( new ROM( req.response ) );
+      emu.read_rom( new emu.ROM( req.response ) );
       if ( callback )
       {
         callback( );
@@ -74,24 +44,6 @@
     }
 
     req.send( );
-  }
-
-  /**
-   * Displays debug info
-   */
-  emu.show_debug_info = function( )
-  {
-    $( "#dbg-reg-a"  ).text( hex( emu.a,      2 ) );
-    $( "#dbg-reg-f"  ).text( bin( emu.f,      8 ) );
-    $( "#dbg-reg-b"  ).text( hex( emu.b,      2 ) );
-    $( "#dbg-reg-c"  ).text( hex( emu.c,      2 ) );
-    $( "#dbg-reg-d"  ).text( hex( emu.d,      2 ) );
-    $( "#dbg-reg-e"  ).text( hex( emu.e,      2 ) );
-    $( "#dbg-reg-h"  ).text( hex( emu.h,      2 ) );
-    $( "#dbg-reg-l"  ).text( hex( emu.l,      2 ) );
-    $( "#dbg-reg-sp" ).text( hex( emu.sp,     4 ) );
-    $( "#dbg-reg-pc" ).text( hex( emu.pc,     4 ) );
-    $( "#dbg-reg-ly" ).text( hex( emu.lcd_ly, 2 ) );
   }
 
   /**
@@ -114,9 +66,8 @@
     }
   }
 
-
   /**
-   * UI initialisation
+   * UI init
    */
   $( function( )
   {
@@ -130,17 +81,6 @@
         emu.stopped = false;
         emu.loop( );
       }
-    } );
-
-    /**
-     * Performs a single step
-     */
-    $( "#btn-step" ).on( 'click', function( )
-    {
-      emu.stopped = false;
-      emu.tick( );
-      emu.show_debug_info( );
-      emu.stopped = true;
     } );
 
     /**
@@ -210,7 +150,6 @@
     emu.vram = emu.ctx_data.data;
 
     // Load the rom
-    emu.reset( );
     emu.load_rom( 'pb.gb' , emu.loop );
   } );
 } ) ( this.emu = this.emu || { } );

@@ -4,7 +4,7 @@
  * (C) 2013 Licker Nandor. All rights reserved.
  */
 
-( function( )
+( function( emu )
 {
   // LCDC
   emu.lcd_enable       = false;
@@ -68,7 +68,7 @@
       tile |= ~0xFF;
     }
 
-    idx = base + ( tile * 16 ) + ( l << 1 );
+    idx = base + ( tile << 4 ) + ( l << 1 );
     b0 = emu.ram[ idx ];
     b1 = emu.ram[ idx + 1];
 
@@ -177,33 +177,6 @@
                 emu.vram[ vidx + 3 ] = 0xFF;
               }
             }
-          }
-        }
-      }
-    }
-  }
-
-  emu.debug_build_vram = function( )
-  {
-    var idx, pix;
-
-    for ( var y = 0; y < 0x20; ++y )
-    {
-      for ( var x = 0; x < 0x10; ++x )
-      {
-        for ( var i = 0; i < 8; ++i )
-        {
-          for ( var j = 0; j < 8; ++j )
-          {
-            idx = ( ( ( y << 3 ) + i ) * 160 + ( x << 3 ) + j ) << 2;
-
-            pix = get_tile_pixel( ( y << 4 ) | x, i, 7 - j, 0x8000 );
-            pix = get_color( emu.lcd_bg, pix );
-
-            emu.vram[ idx + 0 ] = pix;
-            emu.vram[ idx + 1 ] = pix;
-            emu.vram[ idx + 2 ] = pix;
-            emu.vram[ idx + 3 ] = 0xFF;
           }
         }
       }

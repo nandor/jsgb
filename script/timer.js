@@ -52,17 +52,10 @@
     // Select the timer frequency
     switch ( emu.timer_clock )
     {
-      // 4.096 KHz
-      case 0x00: cycles = 1024; break;
-
-      // 262.144 KHz
-      case 0x01: cycles = 16;  break;
-
-      // 65.535 KHz
-      case 0x02: cycles = 64;  break;
-
-      // 16.384 KHz
-      case 0x03: cycles = 256; break;
+     case 0x00: cycles = 1024; break; // 4.096 KHz
+     case 0x01: cycles = 16;   break; // 262.144 KHz
+     case 0x02: cycles = 64;   break; // 65.535 KHz
+     case 0x03: cycles = 256;  break; // 16.384 KHz
     }
 
     // Increment the timer counter

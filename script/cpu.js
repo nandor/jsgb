@@ -135,6 +135,17 @@
   accessFlag( 'cf', 4 );
 
   /**
+   * Jumpts to an interrupt address
+   */
+  var interrupt = function( addr )
+  {
+    emu.inc_cycles( 20 );
+    emu.sp = ( emu.sp - 2 ) & 0xFFFF;
+    emu.set_word( emu.sp, emu.pc );
+    emu.pc = addr;
+  }
+
+  /**
    * Sign extend an 8 bit number
    */
   var alu_extend_8 = function( n )
@@ -473,8 +484,8 @@
     var q = y & 1;
     var r, c, tmp;
 
-    var u8 = emu.get_byte( emu.pc );
-    var s8 = alu_extend_8( u8 );
+    var u8  = emu.get_byte( emu.pc );
+    var s8  = alu_extend_8( u8 );
     var u16 = emu.get_word( emu.pc );
     var s16 = alu_extend_16( u16 );
 
@@ -1043,10 +1054,6 @@
         }
 
         return;
-
-      default:
-        throw "Invalid opcode: 0x" + ( op ? op : 0 ).toString( 16 ) +
-              " at address 0x" + emu.pc.toString( 16 );
     }
   }
 
@@ -1055,25 +1062,15 @@
     */
   emu.tick = function( )
   {
-    if ( emu.stopped )
-    {
-      return;
-    }
-
     // VBlank interrupt
     if ( emu.ifVBlank )
     {
       emu.halted = false;
-
       if ( emu.ime && emu.ieVBlank )
       {
         emu.ime = false;
         emu.ifVBlank = false;
-
-        emu.inc_cycles( 20 );
-        emu.sp = ( emu.sp - 2 ) & 0xFFFF;
-        emu.set_word( emu.sp, emu.pc );
-        emu.pc = 0x0040;
+        interrupt( 0x0040 );
       }
     }
 
@@ -1081,16 +1078,11 @@
     if ( emu.ifTimer )
     {
       emu.halted = false;
-
       if ( emu.ime && emu.ieTimer )
       {
         emu.ime = false;
         emu.ifTimer = false;
-
-        emu.inc_cycles( 20 );
-        emu.sp = ( emu.sp - 2 ) & 0xFFFF;
-        emu.set_word( emu.sp, emu.pc );
-        emu.pc = 0x0050;
+        interrupt( 0x0050 );
       }
     }
 
@@ -1098,16 +1090,11 @@
     if ( emu.ifPins )
     {
       emu.halted = false;
-
       if ( emu.ime && emu.iePins )
       {
         emu.ime = false;
         emu.ifPins = false;
-
-        emu.inc_cycles( 20 );
-        emu.sp = ( emu.sp - 2 ) & 0xFFFF;
-        emu.set_word( emu.sp, emu.pc );
-        emu.pc = 0x0060;
+        interrupt( 0x0060 );
       }
     }
 
@@ -1131,9 +1118,7 @@
     // VBlank start
     if ( emu.lcd_ly > 143 && emu.vblank )
     {
-      emu.show_debug_info( );
       emu.build_vram( );
-
       emu.ifVBlank = true;
       emu.vblank = false;
     }
