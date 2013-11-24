@@ -9,7 +9,6 @@
   // State
   emu.halted   = false;
   emu.stopped  = false;
-  emu.vblank   = false;
 
   // Interrupt enable register
   emu.ime      = false;
@@ -18,14 +17,14 @@
   emu.iePins   = false;
   emu.ieSerial = false;
   emu.ieTimer  = false;
-  emu.ieLCDC   = false;
+  emu.ieStat   = false;
   emu.ieVBlank = false;
 
   // Interrupt flags
   emu.ifPins   = false;
   emu.ifSerial = false;
   emu.ifTimer  = false;
-  emu.ifLCDC   = false;
+  emu.ifStat   = false;
   emu.ifVBlank = false;
 
   // Registers
@@ -1074,6 +1073,18 @@
       }
     }
 
+    // Stat
+    if ( emu.ifStat )
+    {
+      emu.halte = false;
+      if ( emu.ime && emu.ifStat )
+      {
+        emu.ime = false;
+        emu.ifStat = false;
+        interrupt( 0x0048 );
+      }
+    }
+
     // Timer interrupt
     if ( emu.ifTimer )
     {
@@ -1108,27 +1119,77 @@
       instr( emu.get_byte( emu.pc++ ) );
     }
 
-    // HBlank
-    if ( emu.gpu_cycles >= 456 )
+    switch ( emu.lcd_stat_mode )
     {
-      emu.lcd_ly++;
-      emu.gpu_cycles -= 456;
+      // HBlank
+      case 0x0:
+      {
+        if ( emu.lcd_cycles >= 204 )
+        {
+          emu.lcd_cycles -= 204;
+          emu.lcd_ly++;
+
+          // VBlank start
+          if ( emu.lcd_ly > 143 )
+          {
+            emu.lcd_vblank( );
+            emu.ifVBlank = true;
+            emu.lcd_stat_mode = 0x1;
+            emu.ifStat |= emu.lcd_stat_vblank;
+          }
+          else
+          {
+            emu.lcd_scanline( );
+            emu.lcd_stat_mode = 0x2;
+          }
+        }
+        break;
+      }
+      // VBlank
+      case 0x1:
+      {
+        if ( emu.lcd_cycles >= 456 )
+        {
+          emu.lcd_cycles -= 456;
+          emu.lcd_ly++;
+
+          if ( emu.lcd_ly > 153 )
+          {
+            emu.lcd_ly = 0;
+            emu.wait = true;
+            emu.lcd_stat_mode = 0x02;
+            emu.ifStat |= emu.lcd_stat_oam;
+          }
+        }
+        break;
+      }
+      // OAM read
+      case 0x2:
+      {
+        if ( emu.lcd_cycles >= 80 )
+        {
+          emu.lcd_cycles -= 80;
+          emu.lcd_stat_mode = 0x3;
+          emu.ifStat |= emu.lcd_stat_hblank;
+        }
+        break;
+      }
+      // VRAM read
+      case 0x3:
+      {
+        if ( emu.lcd_cycles >= 172 )
+        {
+          emu.lcd_cycles -= 172;
+          emu.lcd_stat_mode = 0x0;
+        }
+        break;
+      }
     }
 
-    // VBlank start
-    if ( emu.lcd_ly > 143 && emu.vblank )
+    emu.lcd_stat_equ = emu.lcd_ly == emu.lcd_lyc;
+    if ( emu.lcd_stat_equ )
     {
-      emu.build_vram( );
-      emu.ifVBlank = true;
-      emu.vblank = false;
-    }
-
-    // VBlank end
-    if ( emu.lcd_ly > 153 )
-    {
-      emu.lcd_ly = 0;
-      emu.wait = true;
-      emu.vblank = true;
+      emu.ifStat |= emu.lcd_stat_lyc;
     }
   }
 } ) ( this.emu = this.emu || { } );

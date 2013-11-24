@@ -244,7 +244,7 @@
         emu.ifPins   = ( val & 0x10 ) != 0x00;
         emu.ifSerial = ( val & 0x08 ) != 0x00;
         emu.ifTimer  = ( val & 0x04 ) != 0x00;
-        emu.ifLCDC   = ( val & 0x02 ) != 0x00;
+        emu.ifStat   = ( val & 0x02 ) != 0x00;
         emu.ifVBlank = ( val & 0x01 ) != 0x00;
         return;
 
@@ -343,7 +343,7 @@
         emu.iePins   = ( val & 0x10 ) != 0x00;
         emu.ieSerial = ( val & 0x08 ) != 0x00;
         emu.ieTimer  = ( val & 0x04 ) != 0x00;
-        emu.ieLCDC   = ( val & 0x02 ) != 0x00;
+        emu.ieStat   = ( val & 0x02 ) != 0x00;
         emu.ieVBlank = ( val & 0x01 ) != 0x00;
         return;
     }
@@ -394,7 +394,7 @@
         ret |= emu.ifPins   ? 0x10 : 0x00;
         ret |= emu.ifSerial ? 0x08 : 0x00;
         ret |= emu.ifTimer  ? 0x04 : 0x00;
-        ret |= emu.ifLCDC   ? 0x02 : 0x00;
+        ret |= emu.ifStat   ? 0x02 : 0x00;
         ret |= emu.ifVBlank ? 0x01 : 0x00;
         return ret;
 
@@ -481,7 +481,7 @@
         ret |= emu.iePins   ? 0x10 : 0x00;
         ret |= emu.ieSerial ? 0x08 : 0x00;
         ret |= emu.ieTimer  ? 0x04 : 0x00;
-        ret |= emu.ieLCDC   ? 0x02 : 0x00;
+        ret |= emu.ieStat   ? 0x02 : 0x00;
         ret |= emu.ieVBlank ? 0x01 : 0x00;
         return ret;
     }

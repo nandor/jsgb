@@ -8,7 +8,7 @@
 {
   // Clock cycle counters
   emu.cpu_cycles     = 0;
-  emu.gpu_cycles     = 0;
+  emu.lcd_cycles     = 0;
   emu.counter_cycles = 0;
   emu.divider_cycles = 0;
 
@@ -29,7 +29,7 @@
     }
 
     emu.cpu_cycles     += n;
-    emu.gpu_cycles     += n;
+    emu.lcd_cycles     += n;
     emu.divider_cycles += n;
     emu.counter_cycles += n;
 
