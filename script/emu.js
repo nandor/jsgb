@@ -137,7 +137,7 @@
     emu.canvas = $("#lcd").get( 0 );
     if ( !emu.canvas )
     {
-      throw "emu.canvas not found"
+      throw "Canvas not found"
     }
 
     emu.ctx = emu.canvas.getContext( '2d' )

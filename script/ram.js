@@ -49,7 +49,6 @@
     0xfb, 0x86, 0x20, 0xfe, 0x3e, 0x01, 0xe0, 0x50
   ] );
 
-
   /**
     Load data from a rom cartridge
   */
@@ -65,7 +64,7 @@
     }
 
     // Load the first two banks
-    for ( var i = 0; i < 0x8000; ++i )
+    for ( var i = 0; i < 0x4000; ++i )
     {
       emu.ram[ i ] = rom.data[ i ];
     }
@@ -92,7 +91,6 @@
     emu.set_byte( addr, v & 0xFF );
     emu.set_byte( addr + 1, ( v >> 8 ) & 0xFF );
   }
-
 
   /**
    * Returns the value of a single byte of memory
@@ -126,10 +124,6 @@
         {
           return emu.io_read( addr );
         }
-        else
-        {
-          return emu.ram[ addr ];
-        }
       }
       default:
       {
@@ -143,43 +137,51 @@
    */
   emu.set_byte = function( addr, val )
   {
-    if ( 0xC000 <= addr && addr < 0xE000 )
+    switch ( addr & 0xF000 )
     {
-      emu.ram[ addr ] = val & 0xFF;
-      return;
-    }
+      case 0x0000: case 0x1000: case 0x2000: case 0x3000:
+      case 0x4000: case 0x5000: case 0x6000: case 0x7000:
+      {
+        if ( addr < 0x0100 )
+        {
+          emu.ram[ addr ] = val & 0xFF;
+        }
+        else
+        {
+          emu.cart.set_byte( addr, val );
+        }
+        return;
+      }
+      case 0xA000: case 0xB000:
+      {
+        emu.cart.set_byte( addr, val );
+        return;
+      }
+      case 0xF000:
+      {
+        if ( 0xFF00 <= addr && addr < 0xFF80 || addr == 0xFFFF )
+        {
+          emu.io_write( addr, val );
+          return;
+        }
+      }
+      default:
+      {
+        if ( 0xC000 <= addr && addr < 0xDE00 )
+        {
+          emu.ram[ addr + 0x2000 ] = val & 0xFF;
+        }
 
-    if ( 0xFF00 <= addr && addr < 0xFF80 || addr == 0xFFFF )
-    {
-      emu.io_write( addr, val );
-      return;
-    }
+        if ( 0xE000 <= addr && addr < 0xFE00 )
+        {
+          emu.ram[ addr - 0x2000 ] = val & 0xFF;
+        }
 
-    if ( 0x0100 <= addr && addr < 0x8000 )
-    {
-      emu.cart.set_byte( addr, val );
-      return;
+        emu.ram[ addr ] = val & 0xFF;
+        return;
+      }
     }
-
-    if ( 0xA000 <= addr && addr < 0xC000 )
-    {
-      emu.cart.set_byte( addr, val );
-      return;
-    }
-
-    if ( 0xC000 <= addr && addr < 0xE000 )
-    {
-      emu.ram[ addr + 0x2000 ] = val & 0xFF;
-    }
-
-    if ( 0xE000 <= addr && addr < 0xFE00 )
-    {
-      emu.ram[ addr - 0x2000 ] = val & 0xFF;
-    }
-
-    emu.ram[ addr ] = val & 0xFF;
   }
-
 
   /**
    * Write a value to an IO register
@@ -201,7 +203,6 @@
 
         if ( !( val & 0x10 ) ) {
           emu.keys = 0x1F;
-
           emu.keys &= emu.key_down  ? 0x07 : 0xFF;
           emu.keys &= emu.key_up    ? 0x0B : 0xFF;
           emu.keys &= emu.key_left  ? 0x0D : 0xFF;
@@ -332,8 +333,8 @@
 
       // DMG ROM enable
       case 0xFF50:
-        emu.lcd_ly      = 0x90;
-        emu.nr[ 0x26 ]  = 0xF1;
+        emu.lcd_ly = 0x90;
+        emu.nr[ 0x26 ] = 0xF1;
         emu.boot_rom_enabled = false;
         return;
 

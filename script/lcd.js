@@ -60,11 +60,13 @@
   {
     var b0, b1, idx, pix;
 
-    if ( !base ) {
+    if ( !base )
+    {
       base = emu.lcd_tile_data;
     }
 
-    if ( base == 0x9000 && ( tile & 0x80 ) ) {
+    if ( base == 0x9000 && ( tile & 0x80 ) )
+    {
       tile |= ~0xFF;
     }
 
